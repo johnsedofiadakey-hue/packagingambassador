@@ -1,6 +1,7 @@
 "use client";
 
 import { Children, useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,22 +45,24 @@ export function CategoryCarousel({ children }: { children: React.ReactNode }) {
         {children}
       </div>
 
-      <button
+      <motion.button
         type="button"
         onClick={() => scroll(-1)}
+        whileTap={{ scale: 0.9 }}
         aria-label="Previous categories"
         className="absolute -left-4 top-[38%] hidden -translate-y-1/2 items-center justify-center rounded-full border border-ink-900/10 bg-cream-50 p-2 text-ink-800 shadow-md transition-colors hover:bg-amber-500 hover:text-white lg:flex"
       >
         <ChevronLeft className="h-5 w-5" />
-      </button>
-      <button
+      </motion.button>
+      <motion.button
         type="button"
         onClick={() => scroll(1)}
+        whileTap={{ scale: 0.9 }}
         aria-label="Next categories"
         className="absolute -right-4 top-[38%] hidden -translate-y-1/2 items-center justify-center rounded-full border border-ink-900/10 bg-cream-50 p-2 text-ink-800 shadow-md transition-colors hover:bg-amber-500 hover:text-white lg:flex"
       >
         <ChevronRight className="h-5 w-5" />
-      </button>
+      </motion.button>
 
       {count > 1 && (
         <div className="mt-5 flex items-center justify-center gap-2">

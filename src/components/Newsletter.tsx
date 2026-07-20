@@ -21,7 +21,7 @@ export function Newsletter() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@example.com"
-        className="w-full rounded-full border border-cream-200 bg-white px-5 py-3 text-sm text-ink-900 placeholder:text-ink-700/50 focus:border-amber-500 focus:outline-none"
+        className="w-full rounded-full border border-cream-200 bg-white px-5 py-3 text-sm text-ink-900 placeholder:text-ink-700/50 focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
       />
       <button
         type="submit"

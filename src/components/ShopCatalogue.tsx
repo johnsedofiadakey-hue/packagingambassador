@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { PackageSearch, Search } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
-import { categories, products, type Product } from "@/lib/products";
+import type { Product } from "@/lib/products";
+import { useAdminData } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 type SortKey = "featured" | "price-asc" | "price-desc" | "rating";
@@ -16,6 +17,7 @@ const PRICE_RANGES = [
 ];
 
 export function ShopCatalogue({ initialCategory }: { initialCategory?: string }) {
+  const { products, categories } = useAdminData();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState(initialCategory ?? "all");
   const [priceRange, setPriceRange] = useState("all");
@@ -35,7 +37,7 @@ export function ShopCatalogue({ initialCategory }: { initialCategory?: string })
     if (sort === "rating") list.sort((a, b) => b.rating - a.rating);
 
     return list;
-  }, [query, category, priceRange, sort]);
+  }, [products, query, category, priceRange, sort]);
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-10">
@@ -46,13 +48,13 @@ export function ShopCatalogue({ initialCategory }: { initialCategory?: string })
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search products..."
-            className="w-full rounded-full border border-cream-200 bg-cream-100 py-3 pl-11 pr-4 text-sm text-ink-900 placeholder:text-ink-700/50 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-full border border-cream-200 bg-cream-100 py-3 pl-11 pr-4 text-sm text-ink-900 placeholder:text-ink-700/50 focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
           />
         </div>
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as SortKey)}
-          className="rounded-full border border-cream-200 bg-cream-100 px-5 py-3 text-sm font-medium text-ink-900 focus:border-amber-500 focus:outline-none"
+          className="rounded-full border border-cream-200 bg-cream-100 px-5 py-3 text-sm font-medium text-ink-900 focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
         >
           <option value="featured">Featured</option>
           <option value="price-asc">Price: Low to High</option>
@@ -124,9 +126,12 @@ export function ShopCatalogue({ initialCategory }: { initialCategory?: string })
             {filtered.length} product{filtered.length === 1 ? "" : "s"} found
           </p>
           {filtered.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-ink-900/20 p-10 text-center text-ink-700/70">
-              No products match your filters.
-            </p>
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-ink-900/20 p-10 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-ink-900/5 text-ink-700/40">
+                <PackageSearch className="h-6 w-6" strokeWidth={1.5} />
+              </span>
+              <p className="text-ink-700/70">No products match your filters.</p>
+            </div>
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {filtered.map((product) => (

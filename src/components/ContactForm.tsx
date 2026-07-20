@@ -21,7 +21,7 @@ export function ContactForm() {
           required
           type="text"
           placeholder="John Smith"
-          className="mt-2 w-full rounded-xl border border-cream-200 bg-cream-50 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none"
+          className="mt-2 w-full rounded-xl border border-cream-200 bg-cream-50 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
         />
       </div>
       <div>
@@ -32,7 +32,7 @@ export function ContactForm() {
           required
           type="email"
           placeholder="example@gmail.com"
-          className="mt-2 w-full rounded-xl border border-cream-200 bg-cream-50 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none"
+          className="mt-2 w-full rounded-xl border border-cream-200 bg-cream-50 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
         />
       </div>
       <div>
@@ -43,7 +43,7 @@ export function ContactForm() {
           required
           type="text"
           placeholder="Bulk order inquiry"
-          className="mt-2 w-full rounded-xl border border-cream-200 bg-cream-50 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none"
+          className="mt-2 w-full rounded-xl border border-cream-200 bg-cream-50 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
         />
       </div>
       <div>
@@ -54,7 +54,7 @@ export function ContactForm() {
           required
           rows={4}
           placeholder="Tell us what you need..."
-          className="mt-2 w-full rounded-xl border border-cream-200 bg-cream-50 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none"
+          className="mt-2 w-full rounded-xl border border-cream-200 bg-cream-50 px-4 py-3 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
         />
       </div>
       <button

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Leaf, ShieldCheck, MapPin, Users } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { ProductArt } from "@/components/ProductArt";
+import { CountUp } from "@/components/CountUp";
 
 const VALUES = [
   {
@@ -81,7 +82,9 @@ export default function AboutPage() {
           <div className="mt-10 flex items-center justify-center gap-3 rounded-2xl bg-forest-800 p-8 text-cream-50">
             <Users className="h-8 w-8 text-amber-400" />
             <div>
-              <p className="font-display text-2xl font-bold">Trusted by 2,000+</p>
+              <p className="font-display text-2xl font-bold">
+                Trusted by <CountUp value="2,000+" />
+              </p>
               <p className="text-sm text-cream-100/70">
                 From street food vendors to established retailers and exporters —
                 businesses across Ghana rely on us every day.

@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, Leaf, Truck, ShieldCheck, Users } from "lucide-react";
 import { ProductArt } from "@/components/ProductArt";
@@ -6,7 +8,11 @@ import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { HeroCollage } from "@/components/HeroCollage";
 import { Newsletter } from "@/components/Newsletter";
 import { Wave } from "@/components/Wave";
-import { categories, products } from "@/lib/products";
+import { Reveal } from "@/components/Reveal";
+import { MotionLink } from "@/components/MotionLink";
+import { CountUp } from "@/components/CountUp";
+import { useAdminData } from "@/lib/store";
+import { getTopSellers } from "@/lib/top-sellers";
 
 const FEATURES = [
   {
@@ -35,7 +41,9 @@ const FEATURES = [
 ];
 
 export default function Home() {
-  const featured = products.slice(0, 4);
+  const { products, categories, orders, settings } = useAdminData();
+  const bestSellers = getTopSellers(products, orders, 4);
+  const hero = settings.hero;
 
   return (
     <div>
@@ -45,45 +53,60 @@ export default function Home() {
           <div className="relative">
             <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink-900 shadow-sm">
               <Leaf className="h-4 w-4 text-amber-600" />
-              Ghana&apos;s Packaging Partner
+              {hero.badgeText}
             </span>
 
             <h1 className="mt-6 font-display text-5xl font-extrabold leading-[1.05] text-ink-900 sm:text-6xl">
-              Packaging That
-              <br />
-              <span className="text-amber-600">Tells Your</span>
-              <br />
-              <span className="text-amber-600">Story</span>
+              {hero.headline}
+              {hero.headlineAccent.split("\n").map((line) => (
+                <span key={line} className="block text-amber-600">
+                  {line}
+                </span>
+              ))}
             </h1>
 
-            <p className="mt-6 max-w-md text-lg text-ink-700/80">
-              Premium kraft cups, boxes, bags, and containers — made from quality
-              materials, delivered fast across Ghana.
-            </p>
+            <p className="mt-6 max-w-md text-lg text-ink-700/80">{hero.subtext}</p>
 
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link
-                href="/shop"
+              <MotionLink
+                href={hero.ctaPrimaryHref}
+                whileTap={{ scale: 0.96 }}
                 className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
               >
-                Shop Now
+                {hero.ctaPrimaryLabel}
                 <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/about"
-                className="inline-flex items-center gap-2 rounded-full border border-ink-900/15 px-6 py-3 font-semibold text-ink-900 transition-colors hover:bg-ink-900/5"
+              </MotionLink>
+              <MotionLink
+                href={hero.ctaSecondaryHref}
+                whileTap={{ scale: 0.96 }}
+                className="inline-flex items-center gap-2 rounded-full border border-forest-700 px-6 py-3 font-semibold text-forest-700 transition-colors hover:bg-forest-700/5"
               >
-                Our Story
-              </Link>
+                {hero.ctaSecondaryLabel}
+              </MotionLink>
             </div>
 
             <div className="mt-10">
-              <p className="font-display text-3xl font-extrabold text-amber-600">2,000+</p>
-              <p className="text-sm text-ink-700/70">Customers served</p>
+              <p className="font-display text-3xl font-extrabold text-amber-600">
+                <CountUp value={hero.statValue} />
+              </p>
+              <p className="text-sm text-ink-700/70">{hero.statLabel}</p>
             </div>
           </div>
 
-          <HeroCollage />
+          {hero.image ? (
+            <div className="relative mx-auto aspect-4/5 w-full max-w-md">
+              <div className="h-full w-full overflow-hidden rounded-3xl shadow-xl shadow-ink-900/15">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={hero.image} alt="" className="h-full w-full object-cover" />
+              </div>
+              <div className="absolute -right-3 -top-3 z-10 flex items-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white shadow-lg">
+                <Leaf className="h-4 w-4" />
+                Eco Certified
+              </div>
+            </div>
+          ) : (
+            <HeroCollage />
+          )}
         </div>
 
         <Wave fillClassName="fill-background" />
@@ -91,19 +114,24 @@ export default function Home() {
 
       {/* Category carousel */}
       <section className="mx-auto max-w-7xl px-6 py-20">
-        <p className="text-center text-sm font-bold uppercase tracking-widest text-amber-600">
-          Browse by Category
-        </p>
-        <h2 className="mt-2 text-center font-display text-3xl font-extrabold text-ink-900 sm:text-4xl">
-          Find What You Need
-        </h2>
+        <Reveal>
+          <p className="text-center text-sm font-bold uppercase tracking-widest text-amber-600">
+            Browse by Category
+          </p>
+          <h2 className="mt-2 text-center font-display text-3xl font-extrabold text-ink-900 sm:text-4xl">
+            Find What You Need
+          </h2>
+        </Reveal>
 
-        <div className="mt-10">
+        <Reveal delay={0.1} className="mt-10">
           <CategoryCarousel>
             {categories.map((category) => (
-              <Link
+              <MotionLink
                 key={category.slug}
                 href={`/category/${category.slug}`}
+                whileHover={{ y: -4 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
                 className="group flex w-60 shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-ink-900/8 bg-cream-50 transition-shadow hover:shadow-lg hover:shadow-ink-900/10 sm:w-64"
               >
                 <ProductArt category={category.slug} className="aspect-4/3 w-full" />
@@ -116,22 +144,22 @@ export default function Home() {
                     <ArrowRight className="h-4 w-4" />
                   </span>
                 </div>
-              </Link>
+              </MotionLink>
             ))}
           </CategoryCarousel>
-        </div>
+        </Reveal>
       </section>
 
-      {/* Featured products */}
+      {/* Best sellers */}
       <section className="bg-sand-200 py-20">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+          <Reveal className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-sm font-bold uppercase tracking-widest text-amber-600">
+              <p className="text-sm font-bold uppercase tracking-widest text-forest-600">
                 Top Picks
               </p>
               <h2 className="mt-2 font-display text-3xl font-extrabold text-ink-900 sm:text-4xl">
-                Featured Products
+                Best Sellers
               </h2>
             </div>
             <Link
@@ -141,11 +169,13 @@ export default function Home() {
               View All
               <ArrowRight className="h-4 w-4" />
             </Link>
-          </div>
+          </Reveal>
 
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {featured.map((product) => (
-              <ProductCard key={product.slug} product={product} />
+            {bestSellers.map((product, index) => (
+              <Reveal key={product.slug} delay={index * 0.06}>
+                <ProductCard product={product} />
+              </Reveal>
             ))}
           </div>
         </div>
@@ -153,46 +183,56 @@ export default function Home() {
 
       {/* Why us */}
       <section className="mx-auto max-w-7xl px-6 py-20">
-        <p className="text-center text-sm font-bold uppercase tracking-widest text-amber-600">
-          Why Us
-        </p>
-        <h2 className="mt-2 text-center font-display text-3xl font-extrabold text-ink-900 sm:text-4xl">
-          The Packaging Ambassadors Difference
-        </h2>
+        <Reveal>
+          <p className="text-center text-sm font-bold uppercase tracking-widest text-amber-600">
+            Why Us
+          </p>
+          <h2 className="mt-2 text-center font-display text-3xl font-extrabold text-ink-900 sm:text-4xl">
+            The Packaging Ambassadors Difference
+          </h2>
+        </Reveal>
 
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {FEATURES.map((feature) => (
-            <div
-              key={feature.title}
-              className="rounded-2xl border border-ink-900/8 bg-cream-50 p-6"
-            >
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 text-amber-600">
-                <feature.icon className="h-6 w-6" strokeWidth={1.5} />
-              </span>
-              <h3 className="mt-4 font-display font-semibold text-ink-900">{feature.title}</h3>
-              <p className="mt-2 text-sm text-ink-700/80">{feature.description}</p>
-            </div>
-          ))}
+          {FEATURES.map((feature, index) => {
+            const green = index % 2 === 1;
+            return (
+              <Reveal
+                key={feature.title}
+                delay={index * 0.08}
+                className="rounded-2xl border border-ink-900/8 bg-cream-50 p-6"
+              >
+                <span
+                  className={`flex h-12 w-12 items-center justify-center rounded-full ${
+                    green ? "bg-forest-600/12 text-forest-700" : "bg-amber-500/15 text-amber-600"
+                  }`}
+                >
+                  <feature.icon className="h-6 w-6" strokeWidth={1.5} />
+                </span>
+                <h3 className="mt-4 font-display font-semibold text-ink-900">{feature.title}</h3>
+                <p className="mt-2 text-sm text-ink-700/80">{feature.description}</p>
+              </Reveal>
+            );
+          })}
         </div>
       </section>
 
       {/* Brand story */}
       <section className="bg-sand-200 py-20">
         <div className="mx-auto grid max-w-6xl gap-12 px-6 lg:grid-cols-2 lg:items-center">
-          <div className="relative">
+          <Reveal className="relative">
             <ProductArt category="boxes" className="aspect-4/3 w-full rounded-3xl" />
             <div className="absolute -bottom-5 left-6 flex items-center gap-2 rounded-2xl bg-forest-800 px-4 py-3 text-sm font-semibold text-cream-50 shadow-lg">
               <ShieldCheck className="h-4 w-4 text-amber-400" />
               Premium Packaging
             </div>
-          </div>
+          </Reveal>
 
-          <div>
-            <p className="text-sm font-bold uppercase tracking-widest text-amber-600">
+          <Reveal delay={0.1}>
+            <p className="text-sm font-bold uppercase tracking-widest text-forest-600">
               Our Story
             </p>
             <h2 className="mt-2 font-display text-3xl font-extrabold text-ink-900 sm:text-4xl">
-              Born in Ghana. Built for Businesses.
+              Born in Ghana. Built for <span className="text-forest-600">Businesses.</span>
             </h2>
             <p className="mt-6 text-lg text-ink-700/80">
               We started Packaging Ambassadors because we saw local businesses
@@ -200,28 +240,31 @@ export default function Home() {
               serve hundreds of food vendors, retailers, and exporters across Ghana with
               materials that are durable, beautiful, and better for the planet.
             </p>
-            <Link
+            <MotionLink
               href="/about"
-              className="mt-8 inline-flex items-center gap-2 rounded-full border border-ink-900/15 px-6 py-3 font-semibold text-ink-900 transition-colors hover:bg-ink-900/5"
+              whileTap={{ scale: 0.96 }}
+              className="mt-8 inline-flex items-center gap-2 rounded-full border border-forest-700 px-6 py-3 font-semibold text-forest-700 transition-colors hover:bg-forest-700/5"
             >
               Read Our Story
               <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
+            </MotionLink>
+          </Reveal>
         </div>
       </section>
 
       {/* Newsletter */}
       <section className="mx-auto max-w-7xl px-6 py-20 text-center">
-        <h2 className="font-display text-2xl font-extrabold text-ink-900 sm:text-3xl">
-          Stay in the Loop
-        </h2>
-        <p className="mx-auto mt-3 max-w-md text-ink-700/80">
-          New products, special deals, and packaging tips — straight to your inbox.
-        </p>
-        <div className="mt-6">
-          <Newsletter />
-        </div>
+        <Reveal>
+          <h2 className="font-display text-2xl font-extrabold text-ink-900 sm:text-3xl">
+            Stay in the Loop
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-ink-700/80">
+            New products, special deals, and packaging tips — straight to your inbox.
+          </p>
+          <div className="mt-6">
+            <Newsletter />
+          </div>
+        </Reveal>
       </section>
     </div>
   );

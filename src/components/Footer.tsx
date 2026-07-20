@@ -7,7 +7,7 @@ export function Footer() {
       <div className="mx-auto grid max-w-7xl gap-10 px-6 py-14 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <Link href="/" className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 text-forest-900">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-sunset-500 text-white">
               <Leaf className="h-4 w-4" />
             </span>
             <span className="font-display text-lg font-bold text-white">
@@ -63,9 +63,15 @@ export function Footer() {
           </ul>
         </div>
       </div>
-      <div className="border-t border-white/10 px-6 py-5 text-center text-xs text-cream-100/60">
+      <div className="relative border-t border-white/10 px-6 py-5 text-center text-xs text-cream-100/60">
         © {new Date().getFullYear()} Packaging Ambassadors. Born in Ghana. Built for
         businesses.
+        <Link
+          href="/admin/login"
+          className="mt-2 block text-cream-100/20 transition-colors hover:text-cream-100/50 sm:absolute sm:right-6 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2"
+        >
+          Staff Login
+        </Link>
       </div>
     </footer>
   );

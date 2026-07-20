@@ -13,12 +13,14 @@ export type Product = {
   rating: number;
   reviewCount: number;
   price: number;
+  compareAtPrice?: number;
   unit: string;
   stock: number;
   description: string;
   colors: string[];
   sizes: string[];
   specs: string[];
+  image?: string;
 };
 
 export const categories: Category[] = [
@@ -163,16 +165,22 @@ export const products: Product[] = [
   },
 ];
 
-export function getProductBySlug(slug: string) {
-  return products.find((p) => p.slug === slug);
+export function getProductBySlug(list: Product[], slug: string) {
+  return list.find((p) => p.slug === slug);
 }
 
-export function getProductsByCategory(categorySlug: string) {
-  return products.filter((p) => p.category === categorySlug);
+export function getProductsByCategory(list: Product[], categorySlug: string) {
+  return list.filter((p) => p.category === categorySlug);
 }
 
-export function getRelatedProducts(product: Product, count = 3) {
-  return products
+export function getRelatedProducts(list: Product[], product: Product, count = 3) {
+  return list
     .filter((p) => p.category === product.category && p.slug !== product.slug)
     .slice(0, count);
 }
+
+export const BADGE_STYLES: Record<string, string> = {
+  "Best Seller": "bg-amber-500 text-white",
+  "Eco-Friendly": "bg-forest-800 text-cream-50",
+  New: "bg-sunset-500 text-white",
+};

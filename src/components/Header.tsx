@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronDown, Leaf, Menu, Search, ShoppingCart, User, X } from "lucide-react";
+import { ChevronDown, Leaf, Menu, Search, ShoppingCart, X } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
-import { categories } from "@/lib/products";
+import { useAdminData } from "@/lib/store";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -15,6 +15,7 @@ const NAV_LINKS = [
 
 export function Header() {
   const { itemCount } = useCart();
+  const { categories } = useAdminData();
   const [open, setOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
 
@@ -22,7 +23,7 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b border-ink-900/8 bg-sand-50/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
         <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 text-white">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sunset-500 text-white">
             <Leaf className="h-5 w-5" strokeWidth={2} />
           </span>
           <span className="font-display leading-tight">
@@ -95,13 +96,6 @@ export function Header() {
             className="rounded-full p-2.5 text-ink-800 transition-colors hover:bg-ink-900/5"
           >
             <Search className="h-5 w-5" />
-          </Link>
-          <Link
-            href="/account"
-            aria-label="Account"
-            className="rounded-full p-2.5 text-ink-800 transition-colors hover:bg-ink-900/5"
-          >
-            <User className="h-5 w-5" />
           </Link>
           <Link
             href="/cart"

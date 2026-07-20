@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fbf3e6;
+  --background: #ffffff;
   --foreground: #241f16;
 
   /* Ink — neutral warm-charcoal text scale (replaces green as the default text color) */
@@ -17,24 +17,34 @@
   --color-sand-200: #f3e4cc;
   --color-sand-300: #ecd5ae;
 
-  /* Forest — demoted to a deliberate accent (footer, brand-story, eco badge, trust banner) */
-  --color-forest-950: #141c0e;
-  --color-forest-900: #1c2815;
-  --color-forest-800: #24331b;
-  --color-forest-700: #2d4023;
-  --color-forest-600: #3a5230;
-  --color-forest-500: #4a6640;
+  /* Forest — demoted to a deliberate accent (footer, brand-story, eco badge, trust banner).
+     Retuned warmer/olive to blend with the company logo's green. */
+  --color-forest-950: #161e0f;
+  --color-forest-900: #1f2c12;
+  --color-forest-800: #283a17;
+  --color-forest-700: #33481d;
+  --color-forest-600: #405c26;
+  --color-forest-500: #52702f;
 
   --color-cream-50: #fffbf4;
   --color-cream-100: #fbf3e6;
   --color-cream-200: #f3e4cc;
 
-  --color-amber-400: #e6a35c;
-  --color-amber-500: #d6883f;
-  --color-amber-600: #bd7130;
-  --color-amber-700: #9c5c26;
+  /* Amber — retuned toward the logo's gold, still the primary CTA color. */
+  --color-amber-400: #eaa84f;
+  --color-amber-500: #dd8f2e;
+  --color-amber-600: #c17a1f;
+  --color-amber-700: #9c6015;
 
-  --color-clay-500: #c07a5a;
+  /* Clay — already closest to the logo's brown; retuned deeper/richer, plus a new 700
+     shade close to the logo's actual mark color. */
+  --color-clay-500: #b96a45;
+  --color-clay-700: #8a4a2e;
+
+  /* Sunset — new, sampled from the logo's vivid orange. Used sparingly for high-impact
+     accents only (logo mark, "New" badge) — not a general-purpose color. */
+  --color-sunset-500: #e2791f;
+  --color-sunset-600: #c96518;
 }
 
 @theme inline {
@@ -69,6 +79,10 @@
   --color-amber-700: var(--color-amber-700);
 
   --color-clay-500: var(--color-clay-500);
+  --color-clay-700: var(--color-clay-700);
+
+  --color-sunset-500: var(--color-sunset-500);
+  --color-sunset-600: var(--color-sunset-600);
 
   --font-sans: var(--font-inter);
   --font-display: var(--font-jakarta);

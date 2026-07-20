@@ -25,6 +25,7 @@ type CartContextValue = {
   addToCart: (product: Product, opts: { size: string; color: string; quantity: number }) => void;
   updateQuantity: (key: string, quantity: number) => void;
   removeLine: (key: string) => void;
+  clearCart: () => void;
   itemCount: number;
   subtotal: number;
 };
@@ -43,6 +44,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time localStorage hydration on mount
       if (raw) setLines(JSON.parse(raw));
     } catch {
       // ignore corrupted storage
@@ -91,6 +93,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setLines((prev) => prev.filter((l) => lineKey(l) !== key));
   }, []);
 
+  const clearCart = useCallback(() => {
+    setLines([]);
+  }, []);
+
   const itemCount = useMemo(() => lines.reduce((sum, l) => sum + l.quantity, 0), [lines]);
   const subtotal = useMemo(
     () => lines.reduce((sum, l) => sum + l.price * l.quantity, 0),
@@ -98,8 +104,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ lines, addToCart, updateQuantity, removeLine, itemCount, subtotal }),
-    [lines, addToCart, updateQuantity, removeLine, itemCount, subtotal]
+    () => ({ lines, addToCart, updateQuantity, removeLine, clearCart, itemCount, subtotal }),
+    [lines, addToCart, updateQuantity, removeLine, clearCart, itemCount, subtotal]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

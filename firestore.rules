@@ -1,0 +1,64 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function staffData() {
+      return get(/databases/$(database)/documents/staff/$(request.auth.uid)).data;
+    }
+
+    function isActiveStaff() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/staff/$(request.auth.uid))
+        && staffData().active == true;
+    }
+
+    function role() {
+      return staffData().role;
+    }
+
+    function isAdmin() { return isActiveStaff() && role() == 'Admin'; }
+    function isSales() { return isActiveStaff() && role() == 'Sales Staff'; }
+    function isInventory() { return isActiveStaff() && role() == 'Inventory Staff'; }
+
+    // Public catalog — the storefront reads these signed out.
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin() || isInventory();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Guest checkout creates orders without being signed in. Staff manage them.
+    match /orders/{orderId} {
+      allow create: if request.resource.data.keys().hasAll(
+          ['customerName', 'phone', 'address', 'lines', 'subtotal', 'status', 'createdAt']
+        )
+        && request.resource.data.status == 'Pending';
+      allow read: if isActiveStaff();
+      allow update: if isAdmin() || isSales();
+      allow delete: if isAdmin();
+    }
+
+    // Any signed-in staff member can read the roster (to resolve their own
+    // role); only Admins manage it.
+    match /staff/{staffId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Store settings incl. Paystack/SMS/email config — readable by any active
+    // staff, but only Admins can change it.
+    match /settings/{settingId} {
+      allow read: if isActiveStaff();
+      allow write: if isAdmin();
+    }
+  }
+}

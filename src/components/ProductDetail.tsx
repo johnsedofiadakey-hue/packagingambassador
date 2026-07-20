@@ -3,13 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, Minus, Plus, ShoppingCart, Star, Truck } from "lucide-react";
 import { ProductArt } from "@/components/ProductArt";
 import { useCart } from "@/lib/cart-context";
-import { formatPrice } from "@/lib/utils";
-import type { Product } from "@/lib/products";
+import { formatPrice, getDiscountPercent } from "@/lib/utils";
+import { BADGE_STYLES, type Product } from "@/lib/products";
 
 export function ProductDetail({ product }: { product: Product }) {
+  const discount = getDiscountPercent(product);
   const [color, setColor] = useState(product.colors[0]);
   const [size, setSize] = useState(product.sizes[0]);
   const [quantity, setQuantity] = useState(1);
@@ -38,14 +40,32 @@ export function ProductDetail({ product }: { product: Product }) {
       </nav>
 
       <div className="mt-6 grid gap-10 lg:grid-cols-2">
-        <ProductArt category={product.category} className="aspect-square w-full rounded-3xl" />
+        {product.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.image}
+            alt={product.name}
+            className="aspect-square w-full rounded-3xl object-cover"
+          />
+        ) : (
+          <ProductArt category={product.category} className="aspect-square w-full rounded-3xl" />
+        )}
 
         <div>
-          {product.badge && (
-            <span className="inline-block rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">
-              {product.badge}
-            </span>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {product.badge && (
+              <span
+                className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${BADGE_STYLES[product.badge]}`}
+              >
+                {product.badge}
+              </span>
+            )}
+            {discount !== null && (
+              <span className="inline-block rounded-full bg-forest-600 px-3 py-1 text-xs font-semibold text-white">
+                -{discount}% OFF
+              </span>
+            )}
+          </div>
           <h1 className="mt-3 font-display text-3xl font-bold text-ink-900 sm:text-4xl">
             {product.name}
           </h1>
@@ -55,11 +75,16 @@ export function ProductDetail({ product }: { product: Product }) {
             <span>({product.reviewCount} reviews)</span>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap items-baseline gap-2">
+            {discount !== null && (
+              <span className="text-lg text-ink-700/40 line-through">
+                {formatPrice(product.compareAtPrice!)}
+              </span>
+            )}
             <span className="font-display text-3xl font-bold text-ink-900">
               {formatPrice(product.price)}
             </span>
-            <span className="ml-2 text-ink-700/70">per {product.unit}</span>
+            <span className="text-ink-700/70">per {product.unit}</span>
           </div>
 
           <p className="mt-4 max-w-xl text-ink-700/80">{product.description}</p>
@@ -124,22 +149,29 @@ export function ProductDetail({ product }: { product: Product }) {
             </div>
           </div>
 
-          <button
+          <motion.button
             onClick={handleAdd}
+            whileTap={{ scale: 0.96 }}
             className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-amber-500 py-4 font-semibold text-white transition-colors hover:bg-amber-600 sm:w-auto sm:px-10"
           >
             <ShoppingCart className="h-5 w-5" />
             {justAdded ? "Added to Cart ✓" : `Add to Cart — ${formatPrice(product.price * quantity)}`}
-          </button>
+          </motion.button>
 
-          {justAdded && (
-            <button
-              onClick={() => router.push("/cart")}
-              className="mt-3 block text-sm font-semibold text-ink-800 underline hover:text-amber-600"
-            >
-              View cart
-            </button>
-          )}
+          <AnimatePresence>
+            {justAdded && (
+              <motion.button
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => router.push("/cart")}
+                className="mt-3 block text-sm font-semibold text-ink-800 underline hover:text-amber-600"
+              >
+                View cart
+              </motion.button>
+            )}
+          </AnimatePresence>
 
           <div className="mt-6 flex flex-wrap gap-6 text-sm text-ink-700/80">
             <span className="flex items-center gap-2">
@@ -175,8 +207,8 @@ export function ProductDetail({ product }: { product: Product }) {
 function swatchColor(name: string) {
   const map: Record<string, string> = {
     "Natural Kraft": "#c8a373",
-    "Forest Green": "#3a5230",
-    Clay: "#c07a5a",
+    "Forest Green": "#405c26",
+    Clay: "#b96a45",
     Clear: "#e7e2d8",
   };
   return map[name] ?? "#c8a373";
