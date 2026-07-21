@@ -3,24 +3,32 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { ArrowLeft, LogIn } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { auth } from "@/lib/firebase";
+import { useCurrentStaff } from "@/lib/useCurrentStaff";
 
 export function LoginForm() {
   const router = useRouter();
+  const { user, staffDoc, loading } = useCurrentStaff();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  // Only redirect once we've actually confirmed this account is active staff —
+  // not just that *some* Firebase user is signed in. Redirecting on any signed-in
+  // user (the old behavior) caused an infinite login <-> dashboard bounce for any
+  // account without a valid active staff doc, since the dashboard's own guard
+  // would immediately redirect back here and this effect would fire again.
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (user) router.replace("/admin/dashboard");
-    });
-    return unsub;
-  }, [router]);
+    if (!loading && user && staffDoc?.active) {
+      router.replace("/admin/dashboard");
+    }
+  }, [loading, user, staffDoc, router]);
+
+  const unauthorized = !loading && Boolean(user) && !staffDoc?.active;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,9 +36,11 @@ export function LoginForm() {
     setPending(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push("/admin/dashboard");
+      // The effect above redirects once useCurrentStaff confirms this account
+      // has active staff access — no need to navigate here.
     } catch {
       setError("Invalid email or password.");
+    } finally {
       setPending(false);
     }
   };
@@ -90,8 +100,10 @@ export function LoginForm() {
             />
           </div>
 
-          {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+          {(error || unauthorized) && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error ?? "This account isn't set up for admin access yet. Contact an administrator."}
+            </p>
           )}
 
           <button
