@@ -32,7 +32,11 @@ Requires `.env.local` (gitignored, not committed) with:
 **Admin login**: `/admin/login`. The first admin account (Firebase Auth user + matching `staff/{uid}`
 Firestore doc with `role: "Admin"`, `active: true`) was created manually via the Firebase console —
 there's no self-serve bootstrap flow in the app itself. Ask the project owner for credentials, or if
-setting up a fresh Firebase project, create that first admin manually before anything else works.
+setting up a fresh Firebase project, create that first admin manually before anything else works. **If
+a signed-in account has no matching `staff/{uid}` doc, or `active: false`**, login now shows "This
+account isn't set up for admin access yet" instead of what it used to do — silently bounce between
+`/admin/login` and `/admin/dashboard` forever (fixed 2026-07-21, see Session History). If you see that
+message, the fix is adding/activating the right `staff/{authUid}` doc, not a code bug.
 
 **Order tracking (`/api/orders/track`)** needs Application Default Credentials for `firebase-admin`.
 Run `gcloud auth application-default login` once locally (already done on this machine — the ADC file
@@ -362,6 +366,12 @@ browser-automation tool, not a confirmed app bug — a normal browser session sh
   between — if something referenced in an old memory/plan doesn't match what's actually on disk,
   **trust the disk**, not the memory. This file exists specifically to reduce how often that happens
   going forward; keep it updated.
+- **Admin login redirect symmetry matters.** `LoginForm.tsx` and `admin/(dashboard)/layout.tsx` each
+  independently decide whether the signed-in user is "authorized." If those two checks ever disagree
+  (e.g. one trusts `user` alone, the other requires `staffDoc?.active`), you get an infinite bounce
+  between `/admin/login` and `/admin/dashboard` that reads as constant flickering — hit for real
+  2026-07-21, see Session History. Both now use the exact same `useCurrentStaff()` check for exactly
+  this reason; if you touch either file's redirect logic, keep them in lockstep.
 
 ## Session history (chronological, high-level)
 
@@ -431,4 +441,17 @@ browser-automation tool, not a confirmed app bug — a normal browser session sh
    model, admin form, storefront swatch, CSV import). Deployed `firestore.rules` for the first time
    (confirmed success) and discovered **Firebase Storage itself was never initialized on this
    project** — not a rules gap, the bucket doesn't exist, so photo uploads have likely never worked in
-   production; needs a one-time console click, can't be done via CLI (see Known Gaps #3).
+   production; needs a one-time console click, can't be done via CLI (see Known Gaps #3). That
+   `firestore.rules` deploy immediately broke the live storefront (settings was staff-only-read, but
+   the storefront reads it anonymously) — fixed within minutes, redeployed; also silenced uncaught
+   permission-denied console spam from the `orders`/`staff` listeners for anonymous visitors (harmless
+   but noisy — see Data Layer/Gotchas above for both).
+10. **Admin login flicker fix** (2026-07-21) — user reported the admin login page "kept flickering."
+    Root cause: `LoginForm.tsx` redirected to `/admin/dashboard` on *any* signed-in Firebase user,
+    without checking `staffDoc?.active`; the dashboard's own guard required it and would immediately
+    redirect back, and the login page would redirect forward again — an infinite loop. Fixed by making
+    `LoginForm.tsx` use the same `useCurrentStaff()` check the dashboard uses, so it only redirects
+    once actually authorized, and shows a clear inline message ("This account isn't set up for admin
+    access yet") instead of looping when it isn't. See the Gotchas entry on redirect symmetry.
+    Deployed. If this resurfaces, it's almost certainly the `staff/{uid}` doc missing or
+    `active: false` for the account being tested, not a code regression.
