@@ -36,6 +36,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Blog content — public read, admin-only write (marketing copy, same trust
+    // level as Categories).
+    match /posts/{postId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Guest checkout creates orders without being signed in. Staff manage them.
     match /orders/{orderId} {
       allow create: if request.resource.data.keys().hasAll(

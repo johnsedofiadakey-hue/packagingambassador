@@ -630,12 +630,14 @@ export default function AdminSettingsPage() {
         {tab === "Notifications" && (
           <div className="max-w-sm">
             <SecretWarning>
-              Order confirmations now send for real through Arkesel (SMS) and Resend (email) — but
+              Order confirmations now send for real through Arkesel (SMS) and Brevo (email) — but
               the actual API keys live in server environment variables (
               <code className="rounded bg-ink-900/5 px-1">ARKESEL_API_KEY</code>,{" "}
-              <code className="rounded bg-ink-900/5 px-1">RESEND_API_KEY</code>), not in this form.
+              <code className="rounded bg-ink-900/5 px-1">BREVO_API_KEY</code>), not in this form.
               Storing real secrets here would make them readable by any signed-in staff account.
-              Leave a key unset to skip that channel.
+              Leave a key unset to skip that channel. The confirmation email is automatically
+              branded with your logo and the colors set in Colors &amp; Branding, and includes a
+              one-click tracking link.
             </SecretWarning>
             <form
               onSubmit={(e) => {
@@ -663,7 +665,7 @@ export default function AdminSettingsPage() {
               </p>
               <Field
                 label="Email Provider"
-                placeholder="Resend"
+                placeholder="Brevo"
                 value={notifications.emailProvider}
                 onChange={(v) => setNotifications((s) => ({ ...s, emailProvider: v }))}
               />

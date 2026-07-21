@@ -2,10 +2,10 @@
 # NEXT_PUBLIC_* values are the Firebase client SDK config — not secrets, safe
 # to commit (this is the same config already shipped in every page's HTML).
 #
-# ARKESEL_API_KEY / RESEND_API_KEY are intentionally NOT declared here since
+# ARKESEL_API_KEY / BREVO_API_KEY are intentionally NOT declared here since
 # no real values exist yet (see src/app/api/notifications/order-confirmation)
 # — that channel no-ops without them. Once real keys exist, set them with
-# `firebase apphosting:secrets:set ARKESEL_API_KEY` (and RESEND_API_KEY),
+# `firebase apphosting:secrets:set ARKESEL_API_KEY` (and BREVO_API_KEY),
 # then add matching `secret:` entries below. Never commit real key values to
 # this file.
 

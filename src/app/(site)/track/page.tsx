@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { PackageSearch } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
+import { PageLoading } from "@/components/PageLoading";
 import { OrderStatusStepper } from "@/components/OrderStatusStepper";
 import { formatPrice } from "@/lib/utils";
 import type { OrderStatus } from "@/lib/store";
@@ -17,13 +19,22 @@ type TrackedOrder = {
 };
 
 export default function TrackPage() {
-  const [orderId, setOrderId] = useState("");
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <TrackPageInner />
+    </Suspense>
+  );
+}
+
+function TrackPageInner() {
+  const searchParams = useSearchParams();
+  const [orderId, setOrderId] = useState(searchParams.get("order") ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<TrackedOrder | null>(null);
+  const autoTracked = useRef(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const runTrack = async (id: string) => {
     setLoading(true);
     setError(null);
     setOrder(null);
@@ -32,7 +43,7 @@ export default function TrackPage() {
       const res = await fetch("/api/orders/track", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({ orderId: id }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -45,6 +56,20 @@ export default function TrackPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    const fromLink = searchParams.get("order");
+    if (fromLink && !autoTracked.current) {
+      autoTracked.current = true;
+      runTrack(fromLink);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    runTrack(orderId);
   };
 
   return (

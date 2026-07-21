@@ -1,6 +1,6 @@
 # Packaging Ambassadors — Project Handoff
 
-Last updated: 2026-07-21 (color theming pass). Read this before touching the codebase — it explains what exists, why it's
+Last updated: 2026-07-21 (Brevo email + blog CMS + rate limiting pass). Read this before touching the codebase — it explains what exists, why it's
 built the way it is, and what's still missing. This is a living document; keep it updated as the
 project changes so the next session (human or AI) doesn't have to reconstruct context from scratch.
 
@@ -26,8 +26,9 @@ npm run dev      # http://localhost:3000 (or next available port)
 
 Requires `.env.local` (gitignored, not committed) with:
 - `NEXT_PUBLIC_FIREBASE_*` (6 vars) — Firebase project config, already set up for this project.
-- `ARKESEL_API_KEY`, `RESEND_API_KEY` — server-only, currently **blank placeholders**. SMS/email
-  notifications silently no-op until these are filled in with real provider keys.
+- `ARKESEL_API_KEY`, `BREVO_API_KEY` — server-only, currently **blank placeholders**. SMS/email
+  notifications silently no-op until these are filled in with real provider keys (the payment/
+  Paystack key is a separate, still-pending item — see Known Gaps #1).
 
 **Admin login**: `/admin/login`. The first admin account (Firebase Auth user + matching `staff/{uid}`
 Firestore doc with `role: "Admin"`, `active: true`) was created manually via the Firebase console —
@@ -189,9 +190,11 @@ is real Firestore, live and multi-user:
   sold from non-cancelled `orders`, falls back to admin-tagged `"Best Seller"`-badged products when
   there's no order history yet, falls back further to a plain slice so the section is never empty.
   This replaced an earlier arbitrary `products.slice(0, 4)` "Featured Products" section.
-- Blog (`/blog`, `/blog/[slug]`) — **static content only**, from `src/lib/posts.ts`. Not admin-
-  editable, unlike everything else. A real gap if blog content needs to change often (see Known Gaps).
-- Real order-confirmation SMS (Arkesel) + email (Resend) fire after checkout — see API route above.
+- Blog (`/blog`, `/blog/[slug]`) — **Firestore-backed, admin-editable** (added 2026-07-21, was static
+  `src/lib/posts.ts` before — that file is deleted). `BlogPost` type lives in `src/lib/store.tsx`
+  alongside everything else; both pages are client components (`useAdminData().posts`), same pattern
+  as `/product/[slug]`. See Admin Portal below for the editing screen.
+- Real order-confirmation SMS (Arkesel) + email (Brevo) fire after checkout — see Notifications below.
   Best-effort: a failure here never blocks checkout from succeeding.
 - No customer accounts — deliberately removed. The `/account` page and its header nav icon existed
   briefly as a non-functional mockup and were deleted; don't recreate without being asked. Staff/admin
@@ -209,8 +212,14 @@ is real Firestore, live and multi-user:
   only); the Admin SDK bypasses rules by design. `src/components/OrderStatusStepper.tsx` renders the
   visual Pending→Processing→Delivered progress (or a Cancelled callout). The tracking number is shown
   on the post-checkout confirmation screen (`(site)/cart/page.tsx`) and included in the SMS/email
-  templates. **Known accepted gap**: no rate limiting on the lookup endpoint (no rate-limit infra
-  exists in this project) — low-traffic store, acceptable for now, revisit if abuse shows up.
+  templates. **Rate limited** (added 2026-07-21): `src/lib/rate-limit.ts`, an in-memory sliding-window
+  limiter (12 attempts / 15 min per IP, keyed off `x-forwarded-for`) — verified live with a 14-request
+  curl loop (12× 404, then 429 on the 13th+). Per-process only, so it resets on a Cloud Run cold start
+  and isn't shared across instances if the app scales past one — accepted tradeoff for a low-traffic
+  store; revisit with a Firestore-backed limiter if that ever matters. `/track` now also accepts a
+  `?order=` query param and auto-runs the lookup on mount (`useSearchParams`, wrapped in `<Suspense>` —
+  required by Next or the production build fails) — this is what makes the emailed/texted tracking link
+  a true one-click experience instead of a prefilled form the customer still has to submit.
 
 ### Admin portal (`/admin`)
 - Dashboard: revenue/order/stock summary cards, recent orders, low-stock warnings, and a **"Seed
@@ -229,6 +238,11 @@ is real Firestore, live and multi-user:
   failing the whole row import.
 - Categories: CRUD, manual reordering, delete-guard if products are still assigned.
 - Orders: status pipeline (Pending/Processing/Delivered/Cancelled), fed by the real guest-checkout flow.
+- **Blog** (added 2026-07-21, `/admin/blog`, admin-only nav item): CRUD modeled directly on the
+  Categories screen. Content is edited as one textarea — paragraphs are split on blank lines into the
+  `content: string[]` array Firestore actually stores, joined back with `\n\n` when editing an existing
+  post. Seeded with the original 3 sample posts via a one-off `firebase-admin` script (run once, deleted
+  immediately after — not committed, same pattern as the login-flicker fix in Session History #10).
 - Staff: CRUD with role field (Admin/Sales Staff/Inventory Staff) — `addStaff` creates a *real* Firebase
   Auth account via the secondary-app trick, so anyone added through this UI can actually log in.
 - Settings tabs: General, **Hero & Homepage** (controls the homepage hero copy/CTAs/stat + photo
@@ -243,15 +257,32 @@ is real Firestore, live and multi-user:
 ## Notifications (SMS + email)
 
 Real sending is wired (`src/app/api/notifications/order-confirmation/route.ts`), targeting **Arkesel**
-for SMS and **Resend** for email — chosen deliberately over Hubtel/SendGrid when asked. Triggered from
-`(site)/cart/page.tsx` right after a successful `addOrder()`. Behavior:
-- Missing `ARKESEL_API_KEY` or `RESEND_API_KEY` → that channel is skipped silently (server-side
-  console warning only), checkout still succeeds either way.
+for SMS and **Brevo** for email (switched from Resend 2026-07-21 — Resend was never tested against a
+real account; Brevo was requested explicitly). Triggered from `(site)/cart/page.tsx` right after a
+successful `addOrder()`. Behavior:
+- Missing `ARKESEL_API_KEY` or `BREVO_API_KEY` → that channel is skipped silently (server-side console
+  warning only), checkout still succeeds either way. Both are still blank placeholders — real keys
+  haven't been provided yet.
 - Customer gets an SMS + email confirmation; the store's own `storeEmail` (from Settings → General)
   also gets a copy of the order email.
-- **Untested against real accounts** — the Arkesel request shape in particular may need a small
-  adjustment once there's a real Arkesel account to test against; I built it against their documented
-  v2 API but couldn't verify live delivery.
+- **Branded HTML email** (`buildOrderEmailHtml()` in the route file): logo (absolute URL via
+  `src/lib/site.ts`'s `SITE_URL` — email clients can't resolve relative paths), a colored header bar,
+  an itemized order table, the tracking number in its own callout box, and a "Track My Order" button
+  linking to `/track?order={id}` (see Order Tracking above — this is a true one-click link, not just a
+  prefilled form). Colors are **not hardcoded** — the client sends `settings.theme` (the same 5 hex
+  values that drive Live Color Theming) through to the route, so a store owner who customizes their
+  brand colors automatically gets matching emails too, with no template edit required.
+  - **Real bug hit and fixed while building this**: the initial template had no `<meta charset="utf-8">`
+    — `GH₵` and em-dashes rendered as mojibake (`GHâ,µ`, `â€"`) when viewed in a browser/email client
+    that guessed a different default encoding. Fixed by adding the charset meta tag to the email's
+    `<head>` and setting `charset=utf-8` on any response that serves this HTML directly. If you ever see
+    garbled currency symbols in a sent email, check this first.
+  - Verified by temporarily adding a `GET` handler to the route that returned `buildOrderEmailHtml()`
+    with fake data, screenshotting it in-browser, then removing the handler — there's no way to test
+    real delivery without a live `BREVO_API_KEY`.
+- SMS message also includes the `/track?order={id}` link (not just the bare tracking number as before).
+- **Still untested against a real Brevo/Arkesel account** — built against their documented APIs, request
+  shapes may need small adjustments once real keys exist and a real send can be verified.
 - The old Firestore-stored `smsApiKey`/`emailApiKey` settings fields were **deliberately removed**
   (they'd have been readable by any signed-in staff account — real secrets never belong there). If you
   see references to them anywhere, that's stale.
@@ -266,7 +297,7 @@ gated admin pages) that can't be statically exported.
 - `.firebaserc` — project alias → `packagingambassador`.
 - `firebase.json` — `apphosting.backendId: "packaging-ambassadors"`, `rootDir: "/"`.
 - `apphosting.yaml` — the 6 `NEXT_PUBLIC_FIREBASE_*` values (not secrets — same config already shipped
-  in every page's HTML), `runConfig.minInstances: 0`. `ARKESEL_API_KEY`/`RESEND_API_KEY` deliberately
+  in every page's HTML), `runConfig.minInstances: 0`. `ARKESEL_API_KEY`/`BREVO_API_KEY` deliberately
   **not** declared here (no real values exist yet) — set them via `firebase apphosting:secrets:set`
   once real keys exist, never commit real key values to this file.
 - Backend has **no connected GitHub repo** — deploys are push-from-local via `firebase deploy --only
@@ -306,7 +337,11 @@ Fully responsive, Tailwind `md:`-breakpoint mobile-first throughout — verified
 **Should do before this is a real, live store:**
 1. **Payments aren't real.** Checkout logs a "Pending" order; nothing actually charges the customer.
    Paystack fields in Settings are stored config only, with an on-page warning. This is the single
-   biggest gap between what exists and a functioning store.
+   biggest gap between what exists and a functioning store. **Client will provide the Paystack API key
+   later** (2026-07-21) — everything else in this list was explicitly prioritized ahead of it for that
+   reason. When the key arrives: wire real Paystack charge initialization/verification into the
+   checkout flow in `(site)/cart/page.tsx`, move `paystackSecretKey` off the public-read `settings` doc
+   first (see item 3 below).
 2. ~~Nothing is committed to git.~~ Fixed 2026-07-20 — commit `c503445` landed the entire admin
    portal, Firebase integration, and everything through the logo-driven rebrand. Still worth
    committing in reasonably-sized chunks going forward rather than letting work pile up again.
@@ -326,27 +361,29 @@ Fully responsive, Tailwind `md:`-breakpoint mobile-first throughout — verified
    the `firebase.json` array-config + `--only storage` (no `:rules` suffix) gotcha hit along the way.
 
 **Real features still missing or incomplete:**
-4. **Blog isn't admin-editable** — static `src/lib/posts.ts`, inconsistent with the rest of the
-   Firestore-backed admin portal.
-5. **Catalog is thin** — only the 6 original sample products / 5 categories exist by default. The CSV
-   bulk-import tool exists now specifically to make adding real inventory fast once the client has a
-   product list ready.
-6. **No rate limiting on `/api/orders/track`** — see Order Tracking above. Low-traffic store, accepted
-   for now; revisit if abuse shows up.
+4. ~~Blog isn't admin-editable.~~ Fixed 2026-07-21 — see Feature Inventory / Admin Portal above.
+5. **Catalog is thin** — only the 6 original sample products / 5 categories exist by default. **No code
+   fix exists for this or is planned** — the CSV bulk-import tool already exists specifically to make
+   adding real inventory fast; this item is entirely blocked on the client supplying a real product
+   list, not on any further engineering work.
+6. ~~No rate limiting on `/api/orders/track`.~~ Fixed 2026-07-21 — see Order Tracking above.
 7. `CategoryCarousel` and a few other polish items were being tracked as "leftover from last session"
    items and got closed out as of 2026-07-20 — if a new leftover list starts accumulating, keep it
    honest the same way (don't silently drop things you said you'd do).
+8. **Notifications still unverified against real provider accounts** — see Notifications above. Both
+   `ARKESEL_API_KEY` and `BREVO_API_KEY` are blank placeholders; nothing to fix code-wise until real
+   keys exist to test against.
 
 **Needs a real person to click through and verify** (things that couldn't be tested without an
 authenticated admin session or real provider credentials): hero photo upload end-to-end, promotion
 banner toggle, discount pricing display, best-sellers shifting after a real order, CSV import against
 a real spreadsheet, actual SMS/email delivery.
 
-**Housekeeping**: a fake test order (`ORD-TESTTRACK`, "Test Customer") was written directly to the
-**real** Firestore `orders` collection while QA-ing the tracking feature on 2026-07-21, to avoid needing
-a seeded product catalog locally. It's obviously identifiable as test data but should be deleted via
-the admin Orders screen (login attempts to do this in-session hit repeated flaky redirects in the
-browser-automation tool, not a confirmed app bug — a normal browser session should work fine).
+**Housekeeping**: two fake test orders (`ORD-TESTTRACK`, `ORD-QATEST01`) were written directly to the
+**real** Firestore `orders` collection during QA on 2026-07-21, to avoid needing a seeded product
+catalog locally — both were cleaned up via a one-off `firebase-admin` script before this session ended,
+so nothing to do here. If you ever need to do this again: write a small `.cjs` script inside the repo
+root (so `node_modules` resolves), run it with `node`, delete it immediately — never commit it.
 
 ## Gotchas
 
@@ -362,6 +399,13 @@ browser-automation tool, not a confirmed app bug — a normal browser session sh
   between — if something referenced in an old memory/plan doesn't match what's actually on disk,
   **trust the disk**, not the memory. This file exists specifically to reduce how often that happens
   going forward; keep it updated.
+- **HTML strings sent as email need an explicit `<meta charset="utf-8">`** (and `charset=utf-8` on the
+  response Content-Type if you ever serve the same HTML directly). Without it, `GH₵` and em-dashes
+  rendered as mojibake — hit for real building the Brevo template, see Notifications above.
+- **`useSearchParams()` requires a `<Suspense>` boundary** around the component that calls it, or
+  `next build` fails outright (not just a warning). `(site)/track/page.tsx` is structured as a thin
+  default export wrapping the real page component in `<Suspense>` for exactly this reason — copy that
+  pattern if another page needs a query param read client-side.
 - **Admin login redirect symmetry matters.** `LoginForm.tsx` and `admin/(dashboard)/layout.tsx` each
   independently decide whether the signed-in user is "authorized." If those two checks ever disagree
   (e.g. one trusts `user` alone, the other requires `staffDoc?.active`), you get an infinite bounce
@@ -467,3 +511,28 @@ browser-automation tool, not a confirmed app bug — a normal browser session sh
     *target* name lookup. Fixed by using `firebase deploy --only storage` (no suffix). Both
     `firestore.rules` and `storage.rules` are now confirmed deployed and working — see Data Layer
     above.
+12. **Closed out Known Gaps #2–#6** (2026-07-21) — user explicitly deferred the Paystack key ("will
+    provide it later") and asked for the rest fixed, plus a new Brevo email feature. In order:
+    - **Blog made admin-editable** — `BlogPost` moved from static `src/lib/posts.ts` (deleted) into
+      `store.tsx`/Firestore, new `/admin/blog` CRUD screen, `/blog` + `/blog/[slug]` converted to
+      client components reading `useAdminData().posts`. Seeded the original 3 posts back in via a
+      one-off script (see Housekeeping note above for the pattern).
+    - **Rate limiting added** to `/api/orders/track` (`src/lib/rate-limit.ts`, in-memory, 12/15min per
+      IP) — verified live with a 14-request curl loop.
+    - **Brevo email integration** — replaced Resend (never tested against a real account) with Brevo
+      per explicit request. Built a genuinely branded HTML template: real logo, the store's *own*
+      customized brand colors (reused the Live Color Theming values — no separate template-color config
+      needed), an itemized order table, and a "Track My Order" button. Found and fixed a real
+      mojibona/charset bug in the process (see Gotchas). Verified the rendered template in-browser via a
+      temporary debug route (added, screenshotted, removed — never shipped).
+    - **One-click tracking link** — `/track` now reads a `?order=` query param via `useSearchParams`
+      (wrapped in `<Suspense>`, required for `next build` to succeed) and auto-runs the lookup on
+      mount, so the link in the email/SMS actually tracks the package on click rather than just
+      prefilling a form. Both the SMS message and the post-checkout confirmation screen link now use
+      the same `?order=` pattern.
+    - **Catalog thinness** — confirmed this has no code fix; it's blocked on the client's real product
+      list, and the CSV import tool that exists is already the intended solution once that list shows
+      up.
+    - Deployed `firestore.rules` again (new `posts` collection rule) and `firebase deploy --only
+      apphosting` for the code, after a clean `npx tsc --noEmit`, `npx eslint`, and `npm run build`
+      all passed. Cleaned up both leftover QA test orders in the same pass.

@@ -90,6 +90,16 @@ export type PageContentSettings = {
   footerTagline: string;
 };
 
+export type BlogPost = {
+  slug: string;
+  title: string;
+  excerpt: string;
+  category: string;
+  date: string;
+  readTime: string;
+  content: string[];
+};
+
 export type StoreSettings = {
   storeName: string;
   storePhone: string;
@@ -175,7 +185,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   paystackSecretKey: "",
   smsProvider: "Arkesel",
   smsSenderId: "PackAmb",
-  emailProvider: "Resend",
+  emailProvider: "Brevo",
   emailFromAddress: "orders@packagingambassadors.com",
   hero: DEFAULT_HERO,
   promotion: DEFAULT_PROMOTION,
@@ -200,6 +210,7 @@ type AdminDataContextValue = {
   categories: Category[];
   orders: Order[];
   staff: StaffMember[];
+  posts: BlogPost[];
   settings: StoreSettings;
   loading: boolean;
 
@@ -225,6 +236,10 @@ type AdminDataContextValue = {
   updateStaff: (id: string, patch: Partial<Omit<StaffMember, "id">>) => Promise<void>;
   removeStaff: (id: string) => Promise<void>;
 
+  addPost: (input: Omit<BlogPost, "slug"> & { slug?: string }) => Promise<BlogPost>;
+  updatePost: (slug: string, patch: Partial<BlogPost>) => Promise<void>;
+  removePost: (slug: string) => Promise<void>;
+
   updateSettings: (patch: Partial<StoreSettings>) => Promise<void>;
 };
 
@@ -235,6 +250,7 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
   const [settings, setSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
   const [readyFlags, setReadyFlags] = useState({
     products: false,
@@ -275,6 +291,12 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       },
       () => {}
     );
+    const unsubPosts = onSnapshot(
+      query(collection(db, "posts"), orderBy("date", "desc")),
+      (snap) => {
+        setPosts(snap.docs.map((d) => ({ ...(d.data() as BlogPost), slug: d.id })));
+      }
+    );
     const unsubSettings = onSnapshot(doc(db, "settings", "store"), (snap) => {
       if (snap.exists()) {
         setSettings({ ...DEFAULT_SETTINGS, ...(snap.data() as Partial<StoreSettings>) });
@@ -287,6 +309,7 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       unsubCategories();
       unsubOrders();
       unsubStaff();
+      unsubPosts();
       unsubSettings();
     };
   }, []);
@@ -379,6 +402,21 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
     await deleteDoc(doc(db, "staff", id));
   };
 
+  const addPost = async (input: Omit<BlogPost, "slug"> & { slug?: string }) => {
+    const slug = input.slug ?? slugify(input.title);
+    const post: BlogPost = { ...input, slug } as BlogPost;
+    await setDoc(doc(db, "posts", slug), post);
+    return post;
+  };
+
+  const updatePost = async (slug: string, patch: Partial<BlogPost>) => {
+    await updateDoc(doc(db, "posts", slug), patch);
+  };
+
+  const removePost = async (slug: string) => {
+    await deleteDoc(doc(db, "posts", slug));
+  };
+
   const updateSettings = async (patch: Partial<StoreSettings>) => {
     await setDoc(doc(db, "settings", "store"), patch, { merge: true });
   };
@@ -394,6 +432,7 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       categories,
       orders,
       staff,
+      posts,
       settings,
       loading,
       addProduct,
@@ -408,10 +447,13 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       addStaff,
       updateStaff,
       removeStaff,
+      addPost,
+      updatePost,
+      removePost,
       updateSettings,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [products, categories, orders, staff, settings, loading]
+    [products, categories, orders, staff, posts, settings, loading]
   );
 
   return <AdminDataContext.Provider value={value}>{children}</AdminDataContext.Provider>;

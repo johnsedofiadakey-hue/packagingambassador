@@ -41,9 +41,12 @@ export default function CartPage() {
         phone: order.phone,
         email: order.email,
         subtotal: order.subtotal,
+        lines: order.lines,
         smsSenderId: settings.smsSenderId,
         emailFromAddress: settings.emailFromAddress,
         storeEmail: settings.storeEmail,
+        storeName: settings.storeName,
+        theme: settings.theme,
       }),
     }).catch(() => {
       // Best-effort — checkout already succeeded regardless of notification delivery.
@@ -78,7 +81,7 @@ export default function CartPage() {
           </div>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Link
-              href="/track"
+              href={`/track?order=${confirmedOrderId}`}
               className="inline-flex items-center justify-center gap-2 rounded-full border border-ink-900/15 px-6 py-3 font-semibold text-ink-900 transition-colors hover:border-amber-500 hover:text-amber-600"
             >
               Track Your Order

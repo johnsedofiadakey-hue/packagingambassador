@@ -1,20 +1,37 @@
+"use client";
+
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getPostBySlug, posts } from "@/lib/posts";
+import { PageLoading } from "@/components/PageLoading";
+import { useAdminData } from "@/lib/store";
 
-export function generateStaticParams() {
-  return posts.map((p) => ({ slug: p.slug }));
-}
+export default function BlogPostPage() {
+  const { slug } = useParams<{ slug: string }>();
+  const { posts, loading } = useAdminData();
 
-export default async function BlogPostPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const post = getPostBySlug(slug);
-  if (!post) notFound();
+  if (loading) {
+    return <PageLoading />;
+  }
+
+  const post = posts.find((p) => p.slug === slug);
+
+  if (!post) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-20 text-center">
+        <h1 className="font-display text-2xl font-bold text-ink-900">Post not found</h1>
+        <p className="mt-3 text-ink-700/70">
+          That post doesn&apos;t exist or may have been removed.
+        </p>
+        <Link
+          href="/blog"
+          className="mt-6 inline-flex items-center gap-2 rounded-full bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
+        >
+          Back to Blog
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <article className="mx-auto max-w-3xl px-6 py-16">
