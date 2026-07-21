@@ -18,7 +18,7 @@ async function sendSms(body: OrderConfirmationRequest) {
     return false;
   }
 
-  const message = `Hi ${body.customerName}, thanks for your order #${body.orderId} (GH₵${body.subtotal}) with Packaging Ambassadors. We'll be in touch to confirm delivery and payment.`;
+  const message = `Hi ${body.customerName}, thanks for your order #${body.orderId} (GH₵${body.subtotal}) with Packaging Ambassadors. We'll be in touch to confirm delivery and payment. Track it anytime at packagingambassadors.com/track.`;
 
   const res = await fetch("https://sms.arkesel.com/api/v2/sms/send", {
     method: "POST",
@@ -61,7 +61,7 @@ async function sendEmail(body: OrderConfirmationRequest) {
       from,
       to: recipients,
       subject: `Order ${body.orderId} confirmed — Packaging Ambassadors`,
-      html: `<p>Hi ${body.customerName},</p><p>Thanks for your order <strong>#${body.orderId}</strong> — total <strong>GH₵${body.subtotal}</strong>.</p><p>Our team will reach out shortly to confirm delivery and payment.</p>`,
+      html: `<p>Hi ${body.customerName},</p><p>Thanks for your order <strong>#${body.orderId}</strong> — total <strong>GH₵${body.subtotal}</strong>.</p><p>Our team will reach out shortly to confirm delivery and payment.</p><p>You can track your order anytime at <a href="https://packagingambassadors.com/track">packagingambassadors.com/track</a> using this order number.</p>`,
     }),
   });
 

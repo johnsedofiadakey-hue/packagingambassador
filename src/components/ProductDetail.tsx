@@ -12,7 +12,7 @@ import { BADGE_STYLES, type Product } from "@/lib/products";
 
 export function ProductDetail({ product }: { product: Product }) {
   const discount = getDiscountPercent(product);
-  const [color, setColor] = useState(product.colors[0]);
+  const [color, setColor] = useState(product.colors[0]?.name ?? "");
   const [size, setSize] = useState(product.sizes[0]);
   const [quantity, setQuantity] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
@@ -94,13 +94,13 @@ export function ProductDetail({ product }: { product: Product }) {
             <div className="mt-2 flex gap-2">
               {product.colors.map((c) => (
                 <button
-                  key={c}
-                  onClick={() => setColor(c)}
-                  aria-label={c}
+                  key={c.name}
+                  onClick={() => setColor(c.name)}
+                  aria-label={c.name}
                   className={`h-9 w-9 rounded-full border-2 transition-all ${
-                    color === c ? "border-ink-900 scale-110" : "border-transparent"
+                    color === c.name ? "border-ink-900 scale-110" : "border-transparent"
                   }`}
-                  style={{ background: swatchColor(c) }}
+                  style={{ background: c.hex }}
                 />
               ))}
             </div>
@@ -202,14 +202,4 @@ export function ProductDetail({ product }: { product: Product }) {
       </div>
     </div>
   );
-}
-
-function swatchColor(name: string) {
-  const map: Record<string, string> = {
-    "Natural Kraft": "#c8a373",
-    "Forest Green": "#405c26",
-    Clay: "#b96a45",
-    Clear: "#e7e2d8",
-  };
-  return map[name] ?? "#c8a373";
 }

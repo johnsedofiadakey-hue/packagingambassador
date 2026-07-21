@@ -1,8 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { useAdminData } from "@/lib/store";
 
 export function Footer() {
+  const { settings } = useAdminData();
+
   return (
     <footer className="bg-forest-900 text-cream-100/90">
       <div
@@ -22,8 +27,7 @@ export function Footer() {
             </span>
           </Link>
           <p className="mt-4 max-w-xs text-sm text-cream-100/70">
-            Ghana&apos;s packaging partner — premium kraft cups, boxes, bags, and
-            containers for businesses that care about how they show up.
+            {settings.pageContent.footerTagline}
           </p>
         </div>
 
@@ -47,6 +51,7 @@ export function Footer() {
             <li><Link href="/about" className="hover:text-white">Our Story</Link></li>
             <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
             <li><Link href="/blog" className="hover:text-white">Blog</Link></li>
+            <li><Link href="/track" className="hover:text-white">Track Order</Link></li>
           </ul>
         </div>
 

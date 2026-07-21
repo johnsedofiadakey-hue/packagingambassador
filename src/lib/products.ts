@@ -4,6 +4,11 @@ export type Category = {
   description: string;
 };
 
+export type ColorVariant = {
+  name: string;
+  hex: string;
+};
+
 export type Product = {
   slug: string;
   name: string;
@@ -17,7 +22,7 @@ export type Product = {
   unit: string;
   stock: number;
   description: string;
-  colors: string[];
+  colors: ColorVariant[];
   sizes: string[];
   specs: string[];
   image?: string;
@@ -45,7 +50,11 @@ export const products: Product[] = [
     stock: 500,
     description:
       "Premium single-wall kraft paper cups. Perfect for hot beverages, soups, and more. Made from responsibly sourced materials.",
-    colors: ["Natural Kraft", "Forest Green", "Clay"],
+    colors: [
+      { name: "Natural Kraft", hex: "#c8a373" },
+      { name: "Forest Green", hex: "#405c26" },
+      { name: "Clay", hex: "#b96a45" },
+    ],
     sizes: ["8oz", "12oz", "16oz"],
     specs: [
       "Food-safe inner lining",
@@ -67,7 +76,11 @@ export const products: Product[] = [
     stock: 260,
     description:
       "Sturdy kraft gift boxes with a magnetic-style fold closure. Ideal for retail, gifting, and small product shipping.",
-    colors: ["Natural Kraft", "Forest Green", "Clay"],
+    colors: [
+      { name: "Natural Kraft", hex: "#c8a373" },
+      { name: "Forest Green", hex: "#405c26" },
+      { name: "Clay", hex: "#b96a45" },
+    ],
     sizes: ["Small", "Medium", "Large"],
     specs: [
       "Rigid double-wall construction",
@@ -89,7 +102,10 @@ export const products: Product[] = [
     stock: 340,
     description:
       "Twisted-handle kraft paper bags built for retail checkout and takeaway. Wide base for stability.",
-    colors: ["Natural Kraft", "Forest Green"],
+    colors: [
+      { name: "Natural Kraft", hex: "#c8a373" },
+      { name: "Forest Green", hex: "#405c26" },
+    ],
     sizes: ["Small", "Medium", "Large"],
     specs: [
       "Reinforced twisted handles",
@@ -111,7 +127,10 @@ export const products: Product[] = [
     stock: 410,
     description:
       "Leak-resistant food-grade containers with snap-fit lids. Microwave-safe and freezer-safe for meal prep and delivery.",
-    colors: ["Natural Kraft", "Clear"],
+    colors: [
+      { name: "Natural Kraft", hex: "#c8a373" },
+      { name: "Clear", hex: "#e7e2d8" },
+    ],
     sizes: ["500ml", "750ml", "1000ml"],
     specs: [
       "Snap-fit leak-resistant lid",
@@ -132,7 +151,7 @@ export const products: Product[] = [
     stock: 150,
     description:
       "Protective bubble wrap for shipping fragile items. Cushions against impact and vibration in transit.",
-    colors: ["Clear"],
+    colors: [{ name: "Clear", hex: "#e7e2d8" }],
     sizes: ["30cm width", "50cm width"],
     specs: [
       "Cushions fragile items",
@@ -154,7 +173,11 @@ export const products: Product[] = [
     stock: 380,
     description:
       "Insulated double-wall kraft cups that stay cool to the touch — no sleeve required for hot drinks.",
-    colors: ["Natural Kraft", "Forest Green", "Clay"],
+    colors: [
+      { name: "Natural Kraft", hex: "#c8a373" },
+      { name: "Forest Green", hex: "#405c26" },
+      { name: "Clay", hex: "#b96a45" },
+    ],
     sizes: ["8oz", "12oz", "16oz"],
     specs: [
       "Double-wall insulation, no sleeve needed",

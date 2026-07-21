@@ -5,13 +5,22 @@ import { AlertTriangle, Check, ImageOff } from "lucide-react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { storage } from "@/lib/firebase";
-import { useAdminData, type HeroSettings } from "@/lib/store";
+import {
+  useAdminData,
+  DEFAULT_THEME,
+  type HeroSettings,
+  type ThemeSettings,
+  type PageContentSettings,
+  type WhyUsCard,
+} from "@/lib/store";
 import { PasswordForm } from "@/app/admin/(dashboard)/settings/PasswordForm";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   "General",
   "Hero & Homepage",
+  "Page Content",
+  "Colors & Branding",
   "Promotion",
   "Payment",
   "Notifications",
@@ -239,6 +248,215 @@ function HeroForm({ hero, onSave }: { hero: HeroSettings; onSave: (hero: HeroSet
   );
 }
 
+function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
+        {label}
+      </label>
+      <div className="mt-2 flex items-center gap-3">
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-14 shrink-0 cursor-pointer rounded-lg border border-cream-200 bg-white p-1"
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm uppercase focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+        />
+      </div>
+    </div>
+  );
+}
+
+function ThemeForm({
+  theme,
+  defaultTheme,
+  onSave,
+}: {
+  theme: ThemeSettings;
+  defaultTheme: ThemeSettings;
+  onSave: (theme: ThemeSettings) => Promise<void>;
+}) {
+  const [values, setValues] = useState<ThemeSettings>(theme);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const set = <K extends keyof ThemeSettings>(key: K, value: ThemeSettings[K]) =>
+    setValues((prev) => ({ ...prev, [key]: value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await onSave(values);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="max-w-sm space-y-4">
+      <p className="text-sm text-ink-700/70">
+        Controls the site&apos;s core brand colors — every button, badge, and heading across both
+        the storefront and this admin portal derives its shades from these five values.
+      </p>
+      <ColorField
+        label="Primary (main buttons, links)"
+        value={values.primaryColor}
+        onChange={(v) => set("primaryColor", v)}
+      />
+      <ColorField
+        label="Secondary (footer, eco badge)"
+        value={values.secondaryColor}
+        onChange={(v) => set("secondaryColor", v)}
+      />
+      <ColorField
+        label="Accent (logo mark, “New” badge)"
+        value={values.accentColor}
+        onChange={(v) => set("accentColor", v)}
+      />
+      <ColorField
+        label="Text"
+        value={values.textColor}
+        onChange={(v) => set("textColor", v)}
+      />
+      <ColorField
+        label="Background"
+        value={values.backgroundColor}
+        onChange={(v) => set("backgroundColor", v)}
+      />
+      <div className="flex gap-3">
+        <button
+          type="submit"
+          disabled={saving}
+          className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600 disabled:opacity-60"
+        >
+          {saved ? <Check className="h-4 w-4" /> : null}
+          {saving ? "Saving…" : saved ? "Saved" : "Save Changes"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setValues(defaultTheme)}
+          className="rounded-full border border-ink-900/15 px-6 py-3 font-semibold text-ink-800 transition-colors hover:bg-ink-900/5"
+        >
+          Reset to Default
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function PageContentForm({
+  content,
+  onSave,
+}: {
+  content: PageContentSettings;
+  onSave: (content: PageContentSettings) => Promise<void>;
+}) {
+  const [values, setValues] = useState<PageContentSettings>(content);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const set = <K extends keyof PageContentSettings>(key: K, value: PageContentSettings[K]) =>
+    setValues((prev) => ({ ...prev, [key]: value }));
+
+  const setCard = <K extends keyof WhyUsCard>(index: number, key: K, value: WhyUsCard[K]) =>
+    setValues((prev) => ({
+      ...prev,
+      whyUsCards: prev.whyUsCards.map((card, i) => (i === index ? { ...card, [key]: value } : card)),
+    }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await onSave(values);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="max-w-lg space-y-6">
+      <div className="space-y-4">
+        <h3 className="font-display font-semibold text-ink-900">About Page</h3>
+        <TextareaField
+          label="Intro Paragraph"
+          value={values.aboutIntro}
+          onChange={(v) => set("aboutIntro", v)}
+        />
+        <Field
+          label="Story Title"
+          value={values.aboutStoryTitle}
+          onChange={(v) => set("aboutStoryTitle", v)}
+        />
+        <TextareaField
+          label="Story Paragraph 1"
+          value={values.aboutStoryParagraph1}
+          onChange={(v) => set("aboutStoryParagraph1", v)}
+        />
+        <TextareaField
+          label="Story Paragraph 2"
+          value={values.aboutStoryParagraph2}
+          onChange={(v) => set("aboutStoryParagraph2", v)}
+        />
+      </div>
+
+      <div className="space-y-4 border-t border-cream-200 pt-6">
+        <h3 className="font-display font-semibold text-ink-900">
+          Homepage &ldquo;Why Us&rdquo; Cards
+        </h3>
+        {values.whyUsCards.map((card, i) => (
+          <div key={i} className="space-y-2 rounded-xl border border-cream-200 p-4">
+            <Field label={`Card ${i + 1} Title`} value={card.title} onChange={(v) => setCard(i, "title", v)} />
+            <TextareaField
+              label={`Card ${i + 1} Description`}
+              value={card.description}
+              onChange={(v) => setCard(i, "description", v)}
+              rows={2}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-4 border-t border-cream-200 pt-6">
+        <h3 className="font-display font-semibold text-ink-900">Footer</h3>
+        <TextareaField
+          label="Tagline (under the logo)"
+          value={values.footerTagline}
+          onChange={(v) => set("footerTagline", v)}
+          rows={2}
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={saving}
+        className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600 disabled:opacity-60"
+      >
+        {saved ? <Check className="h-4 w-4" /> : null}
+        {saving ? "Saving…" : saved ? "Saved" : "Save Changes"}
+      </button>
+    </form>
+  );
+}
+
 export default function AdminSettingsPage() {
   const { settings, updateSettings } = useAdminData();
   const [tab, setTab] = useState<Tab>("General");
@@ -317,6 +535,21 @@ export default function AdminSettingsPage() {
 
         {tab === "Hero & Homepage" && (
           <HeroForm hero={settings.hero} onSave={(hero) => updateSettings({ hero })} />
+        )}
+
+        {tab === "Page Content" && (
+          <PageContentForm
+            content={settings.pageContent}
+            onSave={(pageContent) => updateSettings({ pageContent })}
+          />
+        )}
+
+        {tab === "Colors & Branding" && (
+          <ThemeForm
+            theme={settings.theme}
+            defaultTheme={DEFAULT_THEME}
+            onSave={(theme) => updateSettings({ theme })}
+          />
         )}
 
         {tab === "Promotion" && (

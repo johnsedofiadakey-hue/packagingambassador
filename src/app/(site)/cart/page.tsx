@@ -59,19 +59,38 @@ export default function CartPage() {
             <CheckCircle2 className="h-8 w-8" />
           </span>
           <h2 className="mt-4 font-display text-2xl font-semibold text-ink-900">
-            Order {confirmedOrderId} received
+            Order received
           </h2>
           <p className="mt-2 text-ink-700/70">
             We&apos;ve logged your order and our team will reach out to confirm delivery details
             and payment.
           </p>
-          <Link
-            href="/shop"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
-          >
-            Continue Shopping
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/5 px-5 py-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-700/60">
+              Your tracking number
+            </p>
+            <p className="mt-1 font-display text-xl font-bold tracking-wide text-ink-900">
+              {confirmedOrderId}
+            </p>
+            <p className="mt-1 text-xs text-ink-700/60">
+              Save this — you&apos;ll need it to track your order.
+            </p>
+          </div>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link
+              href="/track"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-ink-900/15 px-6 py-3 font-semibold text-ink-900 transition-colors hover:border-amber-500 hover:text-amber-600"
+            >
+              Track Your Order
+            </Link>
+            <Link
+              href="/shop"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
+            >
+              Continue Shopping
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         </section>
       </div>
     );

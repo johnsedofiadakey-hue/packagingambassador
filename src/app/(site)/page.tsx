@@ -272,6 +272,7 @@ export default function Home() {
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((feature, index) => {
               const accent = BRAND_ACCENTS[index % BRAND_ACCENTS.length];
+              const card = settings.pageContent.whyUsCards[index] ?? feature;
               return (
                 <Reveal
                   key={feature.title}
@@ -283,8 +284,8 @@ export default function Home() {
                   >
                     <feature.icon className="h-6 w-6" strokeWidth={1.5} />
                   </span>
-                  <h3 className="mt-4 font-display font-semibold text-ink-900">{feature.title}</h3>
-                  <p className="mt-2 text-sm text-ink-700/80">{feature.description}</p>
+                  <h3 className="mt-4 font-display font-semibold text-ink-900">{card.title}</h3>
+                  <p className="mt-2 text-sm text-ink-700/80">{card.description}</p>
                 </Reveal>
               );
             })}

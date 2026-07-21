@@ -1,8 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, Leaf, ShieldCheck, MapPin, Users } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { ProductArt } from "@/components/ProductArt";
 import { CountUp } from "@/components/CountUp";
+import { useAdminData } from "@/lib/store";
 
 const VALUES = [
   {
@@ -26,16 +29,15 @@ const VALUES = [
 ];
 
 export default function AboutPage() {
+  const { settings } = useAdminData();
+  const content = settings.pageContent;
+
   return (
     <div>
       <PageHero eyebrow="Our Story" title="We Started Because We Cared" />
 
       <section className="mx-auto max-w-7xl px-6 py-16">
-        <p className="max-w-2xl text-lg text-ink-700/80">
-          Packaging Ambassadors was founded by a team of Ghanaian entrepreneurs who saw
-          a gap: local businesses deserved premium packaging that reflected their
-          quality — without the import headaches.
-        </p>
+        <p className="max-w-2xl text-lg text-ink-700/80">{content.aboutIntro}</p>
 
         <div className="mt-16 grid gap-10 lg:grid-cols-2 lg:items-center">
           <ProductArt category="boxes" className="aspect-4/3 w-full rounded-3xl" />
@@ -44,18 +46,10 @@ export default function AboutPage() {
               How We Started
             </p>
             <h2 className="mt-2 font-display text-3xl font-bold text-ink-900">
-              From Accra, to the Nation
+              {content.aboutStoryTitle}
             </h2>
-            <p className="mt-4 text-ink-700/80">
-              In 2020, our founders noticed something: the best local restaurants,
-              bakeries, and retailers were packaging their beautiful products in
-              whatever was available — and it didn&apos;t match their quality.
-            </p>
-            <p className="mt-4 text-ink-700/80">
-              We built Packaging Ambassadors to change that. Today we carry hundreds of
-              products — kraft cups, gift boxes, paper bags, food containers, and more —
-              all available in Ghana, shipped fast.
-            </p>
+            <p className="mt-4 text-ink-700/80">{content.aboutStoryParagraph1}</p>
+            <p className="mt-4 text-ink-700/80">{content.aboutStoryParagraph2}</p>
           </div>
         </div>
       </section>

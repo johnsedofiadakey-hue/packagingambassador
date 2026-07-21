@@ -3,5 +3,11 @@
     "backendId": "packaging-ambassadors",
     "rootDir": "/",
     "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", ".firebase"]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }

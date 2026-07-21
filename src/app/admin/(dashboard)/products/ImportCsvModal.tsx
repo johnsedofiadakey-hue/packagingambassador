@@ -85,8 +85,9 @@ export function ImportCsvModal({
             <p className="mt-2 text-sm text-ink-700/70">
               Columns: name, category, badge, price, compareAtPrice, unit, stock, rating,
               reviewCount, description, colors, sizes, specs. Use <code>;</code> to separate
-              multiple colors/sizes/specs within a cell. Category must match an existing category
-              name or slug.
+              multiple sizes/specs within a cell, and multiple colors as{" "}
+              <code>Name:#hex;Name:#hex</code> (e.g. <code>Forest Green:#405c26</code>). Category
+              must match an existing category name or slug.
             </p>
 
             <button

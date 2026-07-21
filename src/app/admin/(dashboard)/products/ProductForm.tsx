@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { storage } from "@/lib/firebase";
-import type { Category, Product } from "@/lib/products";
+import type { Category, ColorVariant, Product } from "@/lib/products";
 
 const BADGES = ["", "Best Seller", "Eco-Friendly", "New"] as const;
 
@@ -19,7 +19,7 @@ type FormValues = {
   rating: string;
   reviewCount: string;
   description: string;
-  colors: string;
+  colors: ColorVariant[];
   sizes: string;
   specs: string;
   image?: string;
@@ -37,7 +37,7 @@ function toFormValues(product?: Product, defaultCategory?: string): FormValues {
     rating: product ? String(product.rating) : "5",
     reviewCount: product ? String(product.reviewCount) : "0",
     description: product?.description ?? "",
-    colors: product?.colors.join(", ") ?? "",
+    colors: product?.colors ?? [],
     sizes: product?.sizes.join(", ") ?? "",
     specs: product?.specs.join("\n") ?? "",
     image: product?.image,
@@ -64,6 +64,21 @@ export function ProductForm({
 
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: value }));
+
+  const addColor = () =>
+    setValues((prev) => ({
+      ...prev,
+      colors: [...prev.colors, { name: "", hex: "#c8a373" }],
+    }));
+
+  const updateColor = (index: number, patch: Partial<ColorVariant>) =>
+    setValues((prev) => ({
+      ...prev,
+      colors: prev.colors.map((c, i) => (i === index ? { ...c, ...patch } : c)),
+    }));
+
+  const removeColor = (index: number) =>
+    setValues((prev) => ({ ...prev, colors: prev.colors.filter((_, i) => i !== index) }));
 
   const handleImage = (file: File | undefined) => {
     if (!file) return;
@@ -101,9 +116,8 @@ export function ProductForm({
         reviewCount: Number(values.reviewCount) || 0,
         description: values.description.trim(),
         colors: values.colors
-          .split(",")
-          .map((c) => c.trim())
-          .filter(Boolean),
+          .map((c) => ({ name: c.name.trim(), hex: c.hex }))
+          .filter((c) => c.name),
         sizes: values.sizes
           .split(",")
           .map((s) => s.trim())
@@ -316,15 +330,48 @@ export function ProductForm({
           </div>
 
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-              Colours (comma-separated)
-            </label>
-            <input
-              placeholder="Natural Kraft, Forest Green, Clay"
-              value={values.colors}
-              onChange={(e) => set("colors", e.target.value)}
-              className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
-            />
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
+                Color Variants
+              </label>
+              <button
+                type="button"
+                onClick={addColor}
+                className="flex items-center gap-1 text-xs font-semibold text-amber-600 hover:underline"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Color
+              </button>
+            </div>
+            <div className="mt-2 space-y-2">
+              {values.colors.map((c, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={c.hex}
+                    onChange={(e) => updateColor(i, { hex: e.target.value })}
+                    className="h-9 w-11 shrink-0 cursor-pointer rounded-lg border border-cream-200 bg-white p-1"
+                  />
+                  <input
+                    placeholder="Color name (e.g. Forest Green)"
+                    value={c.name}
+                    onChange={(e) => updateColor(i, { name: e.target.value })}
+                    className="w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeColor(i)}
+                    aria-label="Remove color"
+                    className="shrink-0 rounded-full p-2 text-ink-700/50 hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              {values.colors.length === 0 && (
+                <p className="text-xs text-ink-700/50">No color variants yet — optional.</p>
+              )}
+            </div>
           </div>
 
           <div>

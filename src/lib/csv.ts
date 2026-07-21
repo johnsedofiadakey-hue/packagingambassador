@@ -1,4 +1,4 @@
-import type { Category, Product } from "@/lib/products";
+import type { Category, ColorVariant, Product } from "@/lib/products";
 
 const ALLOWED_BADGES = ["Best Seller", "Eco-Friendly", "New"] as const;
 
@@ -89,6 +89,19 @@ function splitList(value: string): string[] {
     .split(";")
     .map((v) => v.trim())
     .filter(Boolean);
+}
+
+const HEX_PATTERN = /^#[0-9a-f]{6}$/i;
+
+// "Natural Kraft:#c8a373;Forest Green:#405c26" — malformed entries (missing/invalid hex) are
+// dropped silently rather than failing the whole row, since colors are decorative/optional.
+function parseColorVariants(value: string): ColorVariant[] {
+  return splitList(value)
+    .map((entry) => {
+      const [name, hex] = entry.split(":").map((s) => s.trim());
+      return { name, hex };
+    })
+    .filter((c): c is ColorVariant => Boolean(c.name) && HEX_PATTERN.test(c.hex));
 }
 
 export function parseProductsCsv(text: string, categories: Category[]): ImportRowResult[] {
@@ -187,7 +200,7 @@ export function parseProductsCsv(text: string, categories: Category[]): ImportRo
         rating,
         reviewCount,
         description: get(idx.description),
-        colors: splitList(get(idx.colors)),
+        colors: parseColorVariants(get(idx.colors)),
         sizes: splitList(get(idx.sizes)),
         specs: splitList(get(idx.specs)),
       },
@@ -210,7 +223,7 @@ export function buildCsvTemplate(): string {
     "4.8",
     "124",
     "Premium single-wall kraft paper cups.",
-    "Natural Kraft;Forest Green",
+    "Natural Kraft:#c8a373;Forest Green:#405c26",
     "8oz;12oz;16oz",
     "Food-safe inner lining;Stackable design",
   ]

@@ -1,50 +1,60 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #241f16;
+  /* Theme roles — the only 5 values Settings → Colors & Branding actually edits.
+     `ThemeInjector` (src/components/ThemeInjector.tsx) overrides these at runtime from
+     Firestore `settings.theme`; every family below is *derived* from them via color-mix(),
+     so the whole app recolors from five inputs instead of one per shade. Derived shades are
+     a close approximation of the original hand-tuned palette, not a pixel-exact reproduction
+     of it — expected and fine for a "single base color → auto-generated ramp" system. */
+  --theme-primary: #dd8f2e;
+  --theme-secondary: #52702f;
+  --theme-accent: #e2791f;
+  --theme-text: #241f16;
+  --theme-background: #fffbf4;
+
+  --background: var(--theme-background);
+  --foreground: var(--theme-text);
 
   /* Ink — neutral warm-charcoal text scale (replaces green as the default text color) */
-  --color-ink-950: #171310;
-  --color-ink-900: #241f16;
-  --color-ink-800: #332c1f;
-  --color-ink-700: #4a4130;
-  --color-ink-500: #746a54;
+  --color-ink-950: color-mix(in srgb, var(--theme-text) 90%, black);
+  --color-ink-900: var(--theme-text);
+  --color-ink-800: color-mix(in srgb, var(--theme-text) 85%, white);
+  --color-ink-700: color-mix(in srgb, var(--theme-text) 65%, white);
+  --color-ink-500: color-mix(in srgb, var(--theme-text) 35%, white);
 
   /* Sand — warm cream/tan primary surface scale */
-  --color-sand-50: #fffbf4;
-  --color-sand-100: #fbf3e6;
-  --color-sand-200: #f3e4cc;
-  --color-sand-300: #ecd5ae;
+  --color-sand-50: var(--theme-background);
+  --color-sand-100: color-mix(in srgb, var(--theme-background) 92%, #c9a876);
+  --color-sand-200: color-mix(in srgb, var(--theme-background) 78%, #c9a876);
+  --color-sand-300: color-mix(in srgb, var(--theme-background) 60%, #c9a876);
 
-  /* Forest — demoted to a deliberate accent (footer, brand-story, eco badge, trust banner).
-     Retuned warmer/olive to blend with the company logo's green. */
-  --color-forest-950: #161e0f;
-  --color-forest-900: #1f2c12;
-  --color-forest-800: #283a17;
-  --color-forest-700: #33481d;
-  --color-forest-600: #405c26;
-  --color-forest-500: #52702f;
+  /* Forest — demoted to a deliberate accent (footer, brand-story, eco badge, trust banner). */
+  --color-forest-950: color-mix(in srgb, var(--theme-secondary) 52%, black);
+  --color-forest-900: color-mix(in srgb, var(--theme-secondary) 65%, black);
+  --color-forest-800: color-mix(in srgb, var(--theme-secondary) 78%, black);
+  --color-forest-700: color-mix(in srgb, var(--theme-secondary) 88%, black);
+  --color-forest-600: color-mix(in srgb, var(--theme-secondary) 96%, black);
+  --color-forest-500: var(--theme-secondary);
 
-  --color-cream-50: #fffbf4;
-  --color-cream-100: #fbf3e6;
-  --color-cream-200: #f3e4cc;
+  --color-cream-50: var(--theme-background);
+  --color-cream-100: color-mix(in srgb, var(--theme-background) 92%, #c9a876);
+  --color-cream-200: color-mix(in srgb, var(--theme-background) 78%, #c9a876);
 
-  /* Amber — retuned toward the logo's gold, still the primary CTA color. */
-  --color-amber-400: #eaa84f;
-  --color-amber-500: #dd8f2e;
-  --color-amber-600: #c17a1f;
-  --color-amber-700: #9c6015;
+  /* Amber — the primary CTA color. */
+  --color-amber-400: color-mix(in srgb, var(--theme-primary) 75%, white);
+  --color-amber-500: var(--theme-primary);
+  --color-amber-600: color-mix(in srgb, var(--theme-primary) 85%, black);
+  --color-amber-700: color-mix(in srgb, var(--theme-primary) 65%, black);
 
-  /* Clay — already closest to the logo's brown; retuned deeper/richer, plus a new 700
-     shade close to the logo's actual mark color. */
+  /* Clay — a fixed supporting terracotta tone, not admin-themed (product-art gradients,
+     the Clay color-swatch option). Deliberately outside the 5 theme roles. */
   --color-clay-500: #b96a45;
   --color-clay-700: #8a4a2e;
 
-  /* Sunset — new, sampled from the logo's vivid orange. Used sparingly for high-impact
-     accents only (logo mark, "New" badge) — not a general-purpose color. */
-  --color-sunset-500: #e2791f;
-  --color-sunset-600: #c96518;
+  /* Sunset — high-impact accent only (logo mark, "New" badge) — not a general-purpose color. */
+  --color-sunset-500: var(--theme-accent);
+  --color-sunset-600: color-mix(in srgb, var(--theme-accent) 85%, black);
 }
 
 @theme inline {
@@ -142,22 +152,22 @@ body {
 .glass-amber {
   background-image: linear-gradient(
     135deg,
-    rgba(221, 143, 46, 0.6) 0%,
-    rgba(221, 143, 46, 0.3) 100%
+    color-mix(in srgb, var(--color-amber-500) 60%, transparent) 0%,
+    color-mix(in srgb, var(--color-amber-500) 30%, transparent) 100%
   );
   backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.35);
   box-shadow:
-    0 8px 28px rgba(157, 96, 21, 0.25),
+    0 8px 28px color-mix(in srgb, var(--color-amber-700) 25%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .glass-forest {
   background-image: linear-gradient(
     135deg,
-    rgba(40, 58, 23, 0.7) 0%,
-    rgba(40, 58, 23, 0.4) 100%
+    color-mix(in srgb, var(--color-forest-800) 70%, transparent) 0%,
+    color-mix(in srgb, var(--color-forest-800) 40%, transparent) 100%
   );
   backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(160%);

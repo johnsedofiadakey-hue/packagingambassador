@@ -68,6 +68,28 @@ export type PromotionSettings = {
   ctaHref: string;
 };
 
+export type ThemeSettings = {
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  textColor: string;
+  backgroundColor: string;
+};
+
+export type WhyUsCard = {
+  title: string;
+  description: string;
+};
+
+export type PageContentSettings = {
+  aboutIntro: string;
+  aboutStoryTitle: string;
+  aboutStoryParagraph1: string;
+  aboutStoryParagraph2: string;
+  whyUsCards: WhyUsCard[];
+  footerTagline: string;
+};
+
 export type StoreSettings = {
   storeName: string;
   storePhone: string;
@@ -80,6 +102,8 @@ export type StoreSettings = {
   emailFromAddress: string;
   hero: HeroSettings;
   promotion: PromotionSettings;
+  theme: ThemeSettings;
+  pageContent: PageContentSettings;
 };
 
 const DEFAULT_HERO: HeroSettings = {
@@ -104,6 +128,45 @@ const DEFAULT_PROMOTION: PromotionSettings = {
   ctaHref: "/shop",
 };
 
+// Matches the --theme-* defaults in src/app/globals.css — keep both in sync.
+export const DEFAULT_THEME: ThemeSettings = {
+  primaryColor: "#dd8f2e",
+  secondaryColor: "#52702f",
+  accentColor: "#e2791f",
+  textColor: "#241f16",
+  backgroundColor: "#fffbf4",
+};
+
+const DEFAULT_PAGE_CONTENT: PageContentSettings = {
+  aboutIntro:
+    "Packaging Ambassadors was founded by a team of Ghanaian entrepreneurs who saw a gap: local businesses deserved premium packaging that reflected their quality — without the import headaches.",
+  aboutStoryTitle: "From Accra, to the Nation",
+  aboutStoryParagraph1:
+    "In 2020, our founders noticed something: the best local restaurants, bakeries, and retailers were packaging their beautiful products in whatever was available — and it didn't match their quality.",
+  aboutStoryParagraph2:
+    "We built Packaging Ambassadors to change that. Today we carry hundreds of products — kraft cups, gift boxes, paper bags, food containers, and more — all available in Ghana, shipped fast.",
+  whyUsCards: [
+    {
+      title: "Eco-Friendly Options",
+      description: "Sustainably sourced materials and biodegradable products across our range.",
+    },
+    {
+      title: "Fast Ghana Delivery",
+      description: "Quick turnaround to all regions across Ghana, with bulk discounts available.",
+    },
+    {
+      title: "Premium Quality",
+      description: "Every product is food-safe, durable, and built to represent your brand well.",
+    },
+    {
+      title: "Wholesale Friendly",
+      description: "Special pricing for bulk orders. We support businesses of all sizes.",
+    },
+  ],
+  footerTagline:
+    "Ghana's packaging partner — premium kraft cups, boxes, bags, and containers for businesses that care about how they show up.",
+};
+
 const DEFAULT_SETTINGS: StoreSettings = {
   storeName: "Packaging Ambassadors",
   storePhone: "+233 XX XXX XXXX",
@@ -116,6 +179,8 @@ const DEFAULT_SETTINGS: StoreSettings = {
   emailFromAddress: "orders@packagingambassadors.com",
   hero: DEFAULT_HERO,
   promotion: DEFAULT_PROMOTION,
+  theme: DEFAULT_THEME,
+  pageContent: DEFAULT_PAGE_CONTENT,
 };
 
 function slugify(name: string) {
