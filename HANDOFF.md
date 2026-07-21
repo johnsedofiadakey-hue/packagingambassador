@@ -308,12 +308,22 @@ Fully responsive, Tailwind `md:`-breakpoint mobile-first throughout — verified
    portal, Firebase integration, and everything through the logo-driven rebrand. Still worth
    committing in reasonably-sized chunks going forward rather than letting work pile up again.
 3. ~~`firestore.rules`/`storage.rules` deployment status unconfirmed.~~ Partially fixed 2026-07-21:
-   `firestore.rules` is now deployed (`firebase deploy --only firestore:rules`, confirmed success).
-   `storage.rules` **could not** be deployed — **Firebase Storage has never been initialized on this
-   project at all** (not a rules issue — the bucket doesn't exist). Someone with console access needs
-   to visit https://console.firebase.google.com/project/packagingambassador/storage, click "Get
-   Started" once, then run `firebase deploy --only storage:rules`. Until then, every photo-upload
-   feature (product photos, hero photo) fails in production.
+   `firestore.rules` is now deployed (`firebase deploy --only firestore:rules`, confirmed success) —
+   this was the **first time these rules were ever actually live**, and it immediately broke the
+   storefront in production (permission-denied on every page) because `settings/{settingId}` was
+   `allow read: if isActiveStaff()`, but the storefront reads that same doc anonymously for hero copy/
+   promotion/theme/page content. Fixed by making settings public-read (documented in the rules file
+   itself — `paystackSecretKey` currently rides along in that same doc and is technically public too,
+   harmless today since it's always empty, but **must move to a staff-only doc before a real key is
+   ever entered**). Separately, `AdminDataProvider`'s `orders`/`staff` listeners had no error handler
+   and logged uncaught permission-denied errors for every anonymous visitor (functionally harmless —
+   `orders`/`staff` just stay empty, which the storefront already handles — but noisy); both now pass
+   a silent error callback. Both fixes are live. `storage.rules` **could not** be deployed — **Firebase
+   Storage has never been initialized on this project at all** (not a rules issue — the bucket doesn't
+   exist). Someone with console access needs to visit
+   https://console.firebase.google.com/project/packagingambassador/storage, click "Get Started" once,
+   then run `firebase deploy --only storage:rules`. Until then, every photo-upload feature (product
+   photos, hero photo) fails in production.
 
 **Real features still missing or incomplete:**
 4. **Blog isn't admin-editable** — static `src/lib/posts.ts`, inconsistent with the rest of the

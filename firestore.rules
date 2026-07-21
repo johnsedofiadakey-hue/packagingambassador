@@ -54,10 +54,15 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Store settings incl. Paystack/SMS/email config — readable by any active
-    // staff, but only Admins can change it.
+    // Store settings — public read because the storefront itself depends on this doc
+    // (hero copy, promotion banner, theme colors, page content, general contact info are
+    // all read by anonymous visitors on every page load via AdminDataProvider). Only
+    // Admins can write. NOTE: paystackSecretKey currently lives in this same doc and is
+    // therefore publicly readable too — harmless today because it's always empty (payments
+    // aren't wired to anything real yet, see HANDOFF.md Known Gaps), but it must move to a
+    // staff-only doc or a server-side secret before a real key is ever put in it.
     match /settings/{settingId} {
-      allow read: if isActiveStaff();
+      allow read: if true;
       allow write: if isAdmin();
     }
   }

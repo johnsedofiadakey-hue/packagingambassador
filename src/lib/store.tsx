@@ -254,15 +254,27 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
         setReadyFlags((f) => ({ ...f, categories: true }));
       }
     );
+    // Orders and staff are staff-only reads per firestore.rules (customer order details and
+    // the staff roster are both private) — but AdminDataProvider is mounted for every visitor,
+    // signed in or not, since the storefront needs the rest of this provider's data too. For a
+    // signed-out visitor these two subscriptions are expected to fail with permission-denied;
+    // the second callback swallows that instead of leaving it as an uncaught console error.
+    // orders/staff simply stay empty for anonymous visitors, which the storefront already
+    // handles gracefully (e.g. getTopSellers() falls back when there's no order data).
     const unsubOrders = onSnapshot(
       query(collection(db, "orders"), orderBy("createdAt", "desc")),
       (snap) => {
         setOrders(snap.docs.map((d) => ({ ...(d.data() as Order), id: d.id })));
-      }
+      },
+      () => {}
     );
-    const unsubStaff = onSnapshot(collection(db, "staff"), (snap) => {
-      setStaff(snap.docs.map((d) => ({ ...(d.data() as StaffMember), id: d.id })));
-    });
+    const unsubStaff = onSnapshot(
+      collection(db, "staff"),
+      (snap) => {
+        setStaff(snap.docs.map((d) => ({ ...(d.data() as StaffMember), id: d.id })));
+      },
+      () => {}
+    );
     const unsubSettings = onSnapshot(doc(db, "settings", "store"), (snap) => {
       if (snap.exists()) {
         setSettings({ ...DEFAULT_SETTINGS, ...(snap.data() as Partial<StoreSettings>) });
