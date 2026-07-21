@@ -96,15 +96,14 @@ is real Firestore, live and multi-user:
   anyone can `create` (guest checkout), only staff can read/update/delete. Staff/settings: staff-only
   read, admin-only write.
 - `storage.rules` (repo root) — governs Firebase Storage uploads (product photos under `products/`,
-  hero photo under `hero/`). **Could not be deployed — Firebase Storage itself has never been
-  initialized on this project** (`firebase deploy --only storage:rules` fails with "Firebase Storage
-  has not been set up on project 'packagingambassador'"). This means every photo-upload feature
-  (product photos in `ProductForm.tsx`, the hero photo in Settings → Hero & Homepage) has likely
-  **never actually worked** in production — it's not a rules problem, the bucket doesn't exist yet.
-  Someone with console access needs to visit
-  https://console.firebase.google.com/project/packagingambassador/storage and click "Get Started"
-  (one-time, can't be done via CLI non-interactively) — then `firebase deploy --only storage:rules`
-  will work.
+  hero photo under `hero/`), public read / auth-required write. **Deployed 2026-07-21** — the bucket
+  itself had never been initialized on the project (fixed via the console "Get Started" flow, can't be
+  done via CLI), and then the CLI deploy needed the array-form `storage` config in `firebase.json`
+  (with an explicit `bucket` name) instead of the single-object form — **use `firebase deploy --only
+  storage` (no `:rules` suffix)**; with the array-form config, `--only storage:rules` gets misparsed
+  as looking for a *target* literally named "rules" and fails with "Could not find rules for the
+  following storage targets: rules". Photo uploads should work now — if they don't, it's likely
+  something else, not this.
 
 ## Design system
 
@@ -311,7 +310,7 @@ Fully responsive, Tailwind `md:`-breakpoint mobile-first throughout — verified
 2. ~~Nothing is committed to git.~~ Fixed 2026-07-20 — commit `c503445` landed the entire admin
    portal, Firebase integration, and everything through the logo-driven rebrand. Still worth
    committing in reasonably-sized chunks going forward rather than letting work pile up again.
-3. ~~`firestore.rules`/`storage.rules` deployment status unconfirmed.~~ Partially fixed 2026-07-21:
+3. ~~`firestore.rules`/`storage.rules` deployment status unconfirmed.~~ Fixed 2026-07-21, both deployed:
    `firestore.rules` is now deployed (`firebase deploy --only firestore:rules`, confirmed success) —
    this was the **first time these rules were ever actually live**, and it immediately broke the
    storefront in production (permission-denied on every page) because `settings/{settingId}` was
@@ -322,12 +321,9 @@ Fully responsive, Tailwind `md:`-breakpoint mobile-first throughout — verified
    ever entered**). Separately, `AdminDataProvider`'s `orders`/`staff` listeners had no error handler
    and logged uncaught permission-denied errors for every anonymous visitor (functionally harmless —
    `orders`/`staff` just stay empty, which the storefront already handles — but noisy); both now pass
-   a silent error callback. Both fixes are live. `storage.rules` **could not** be deployed — **Firebase
-   Storage has never been initialized on this project at all** (not a rules issue — the bucket doesn't
-   exist). Someone with console access needs to visit
-   https://console.firebase.google.com/project/packagingambassador/storage, click "Get Started" once,
-   then run `firebase deploy --only storage:rules`. Until then, every photo-upload feature (product
-   photos, hero photo) fails in production.
+   a silent error callback. Both fixes are live. `storage.rules` deployed successfully in a follow-up
+   pass once the user enabled the Storage bucket via the console — see the Data Layer entry above for
+   the `firebase.json` array-config + `--only storage` (no `:rules` suffix) gotcha hit along the way.
 
 **Real features still missing or incomplete:**
 4. **Blog isn't admin-editable** — static `src/lib/posts.ts`, inconsistent with the rest of the
@@ -454,4 +450,20 @@ browser-automation tool, not a confirmed app bug — a normal browser session sh
     once actually authorized, and shows a clear inline message ("This account isn't set up for admin
     access yet") instead of looping when it isn't. See the Gotchas entry on redirect symmetry.
     Deployed. If this resurfaces, it's almost certainly the `staff/{uid}` doc missing or
-    `active: false` for the account being tested, not a code regression.
+    `active: false` for the account being tested, not a code regression. Confirmed live: the user's
+    `admin@packagingambassador.com` account hit exactly this — a real Firebase Auth user with **no
+    `staff` doc at all** (the manual bootstrap step in Quick Start had never actually been completed
+    for this account). Fixed via a one-off script using `firebase-admin` with this machine's own ADC
+    credentials (not the user's password) to look up the Auth UID by email and write
+    `staff/{uid}` with `role: "Admin", active: true` — script was deleted immediately after running,
+    never committed. This is the repeatable fix for "flicker" reports going forward: find the
+    account's Auth UID (Firebase console → Authentication, or `getUserByEmail` via `firebase-admin`),
+    check/create its `staff/{uid}` Firestore doc.
+11. **Storage bucket + rules fully working** (2026-07-21) — user enabled Firebase Storage via the
+    console (the one manual step from the gap above). Deploying `storage.rules` then failed with
+    "Could not find rules for the following storage targets: rules" — root cause: `firebase.json`
+    needed the array-form `storage: [{ bucket, rules }]` config (not the single-object form) to
+    specify which bucket, and once on the array form, `--only storage:rules` gets misparsed as a
+    *target* name lookup. Fixed by using `firebase deploy --only storage` (no suffix). Both
+    `firestore.rules` and `storage.rules` are now confirmed deployed and working — see Data Layer
+    above.
