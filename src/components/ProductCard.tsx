@@ -16,7 +16,7 @@ export function ProductCard({ product }: { product: Product }) {
       whileHover={{ y: -4 }}
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-ink-900/8 bg-cream-50 transition-shadow hover:shadow-lg hover:shadow-ink-900/10"
+      className="glass group flex flex-col overflow-hidden rounded-2xl transition-shadow hover:shadow-lg"
     >
       <div className="relative">
         {product.image ? (

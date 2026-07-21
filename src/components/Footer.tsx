@@ -1,15 +1,22 @@
 import Link from "next/link";
-import { Leaf, Mail, MapPin, Phone } from "lucide-react";
+import { Mail, MapPin, Phone } from "lucide-react";
+import { Logo } from "@/components/Logo";
 
 export function Footer() {
   return (
     <footer className="bg-forest-900 text-cream-100/90">
+      <div
+        aria-hidden
+        className="h-[3px] w-full"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, var(--color-forest-600), var(--color-clay-700), var(--color-sunset-500), var(--color-amber-500))",
+        }}
+      />
       <div className="mx-auto grid max-w-7xl gap-10 px-6 py-14 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <Link href="/" className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-sunset-500 text-white">
-              <Leaf className="h-4 w-4" />
-            </span>
+            <Logo className="h-9 rounded-md bg-white/90 p-1" />
             <span className="font-display text-lg font-bold text-white">
               Packaging Ambassadors
             </span>

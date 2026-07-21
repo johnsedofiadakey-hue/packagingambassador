@@ -20,7 +20,11 @@ export function PromoBar() {
           animate={{ height: "auto", opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
           transition={{ duration: 0.25, ease: "easeInOut" }}
-          className="overflow-hidden bg-amber-500 text-white"
+          className="overflow-hidden text-white"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, var(--color-clay-700), var(--color-sunset-500), var(--color-amber-500))",
+          }}
         >
           <div className="mx-auto flex max-w-7xl items-center justify-center gap-3 px-6 py-2.5 text-center text-sm font-semibold">
             <span>{promo.text}</span>

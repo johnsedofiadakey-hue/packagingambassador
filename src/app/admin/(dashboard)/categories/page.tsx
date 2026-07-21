@@ -20,8 +20,8 @@ function CategoryForm({
   const [description, setDescription] = useState(category?.description ?? "");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 px-6">
-      <div className="w-full max-w-md rounded-2xl bg-cream-50 p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/30 px-6 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-white/40 bg-white/75 p-6 shadow-xl backdrop-blur-2xl">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-ink-900">
             {category ? "Edit Category" : "Add Category"}

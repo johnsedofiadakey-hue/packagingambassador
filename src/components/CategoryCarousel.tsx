@@ -50,7 +50,7 @@ export function CategoryCarousel({ children }: { children: React.ReactNode }) {
         onClick={() => scroll(-1)}
         whileTap={{ scale: 0.9 }}
         aria-label="Previous categories"
-        className="absolute -left-4 top-[38%] hidden -translate-y-1/2 items-center justify-center rounded-full border border-ink-900/10 bg-cream-50 p-2 text-ink-800 shadow-md transition-colors hover:bg-amber-500 hover:text-white lg:flex"
+        className="absolute -left-4 top-[38%] hidden -translate-y-1/2 items-center justify-center rounded-full border border-white/50 bg-white/60 p-2 text-ink-800 shadow-md backdrop-blur-md transition-colors hover:bg-amber-500 hover:text-white lg:flex"
       >
         <ChevronLeft className="h-5 w-5" />
       </motion.button>
@@ -59,7 +59,7 @@ export function CategoryCarousel({ children }: { children: React.ReactNode }) {
         onClick={() => scroll(1)}
         whileTap={{ scale: 0.9 }}
         aria-label="Next categories"
-        className="absolute -right-4 top-[38%] hidden -translate-y-1/2 items-center justify-center rounded-full border border-ink-900/10 bg-cream-50 p-2 text-ink-800 shadow-md transition-colors hover:bg-amber-500 hover:text-white lg:flex"
+        className="absolute -right-4 top-[38%] hidden -translate-y-1/2 items-center justify-center rounded-full border border-white/50 bg-white/60 p-2 text-ink-800 shadow-md backdrop-blur-md transition-colors hover:bg-amber-500 hover:text-white lg:flex"
       >
         <ChevronRight className="h-5 w-5" />
       </motion.button>

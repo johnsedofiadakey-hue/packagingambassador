@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { ChevronDown, Leaf, Menu, Search, ShoppingCart, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronDown, Menu, Search, ShoppingCart, X } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { useCart } from "@/lib/cart-context";
 import { useAdminData } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -18,14 +20,35 @@ export function Header() {
   const { categories } = useAdminData();
   const [open, setOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 32);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-ink-900/8 bg-sand-50/95 backdrop-blur">
+    <header
+      className={cn(
+        "sticky top-0 z-40 border-b transition-all duration-300 ease-out",
+        scrolled
+          ? "glass"
+          : "border-transparent bg-sand-300 shadow-none backdrop-blur-none"
+      )}
+    >
+      <div
+        aria-hidden
+        className="h-[3px] w-full"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, var(--color-amber-500), var(--color-sunset-500), var(--color-clay-700), var(--color-forest-600))",
+        }}
+      />
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
         <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sunset-500 text-white">
-            <Leaf className="h-5 w-5" strokeWidth={2} />
-          </span>
+          <Logo />
           <span className="font-display leading-tight">
             <span className="block text-lg font-bold text-ink-900">Packaging</span>
             <span className="block text-xs font-bold tracking-widest text-amber-600">
@@ -57,7 +80,7 @@ export function Header() {
 
             {shopOpen && (
               <div className="absolute left-0 top-full pt-2">
-                <div className="w-56 rounded-2xl border border-ink-900/8 bg-sand-50 p-2 shadow-xl shadow-ink-900/10">
+                <div className="glass w-56 rounded-2xl p-2 shadow-xl">
                   {categories.map((c) => (
                     <Link
                       key={c.slug}

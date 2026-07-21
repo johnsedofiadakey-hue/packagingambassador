@@ -12,9 +12,9 @@ import {
   ShoppingBag,
   Settings,
   LogOut,
-  Leaf,
   ExternalLink,
 } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { auth } from "@/lib/firebase";
 import { useCurrentStaff } from "@/lib/useCurrentStaff";
 
@@ -57,11 +57,9 @@ export default function AdminDashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-sand-100">
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-ink-900/8 bg-cream-50 md:flex">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-white/40 bg-white/60 shadow-sm shadow-ink-900/5 backdrop-blur-xl md:flex">
         <div className="flex items-center gap-2 px-6 py-5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-sunset-500 text-white">
-            <Leaf className="h-4 w-4" />
-          </span>
+          <Logo className="h-9" />
           <span className="font-display leading-tight">
             <span className="block text-sm font-bold text-ink-900">Packaging</span>
             <span className="block text-[10px] font-bold tracking-widest text-amber-600">
@@ -106,7 +104,7 @@ export default function AdminDashboardLayout({
       </aside>
 
       <div className="min-w-0 flex-1">
-        <div className="flex gap-1 overflow-x-auto border-b border-ink-900/8 bg-cream-50 px-3 py-2 md:hidden">
+        <div className="flex gap-1 overflow-x-auto border-b border-white/40 bg-white/60 px-3 py-2 backdrop-blur-xl md:hidden">
           {visibleNav.map((item) => (
             <Link
               key={item.href}

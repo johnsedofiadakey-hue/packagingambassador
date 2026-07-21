@@ -121,9 +121,9 @@ export function ProductForm({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-ink-900/40">
-      <div className="flex h-full w-full max-w-lg flex-col overflow-y-auto bg-cream-50 shadow-xl">
-        <div className="flex items-center justify-between border-b border-ink-900/8 px-6 py-4">
+    <div className="fixed inset-0 z-50 flex justify-end bg-ink-900/30 backdrop-blur-sm">
+      <div className="flex h-full w-full max-w-lg flex-col overflow-y-auto border-l border-white/40 bg-white/75 shadow-xl backdrop-blur-2xl">
+        <div className="flex items-center justify-between border-b border-white/40 px-6 py-4">
           <h2 className="font-display text-lg font-bold text-ink-900">
             {product ? "Edit Product" : "Add Product"}
           </h2>

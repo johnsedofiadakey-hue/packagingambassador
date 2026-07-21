@@ -176,10 +176,9 @@ for SMS and **Resend** for email — chosen deliberately over Hubtel/SendGrid wh
 1. **Payments aren't real.** Checkout logs a "Pending" order; nothing actually charges the customer.
    Paystack fields in Settings are stored config only, with an on-page warning. This is the single
    biggest gap between what exists and a functioning store.
-2. **Nothing is committed to git.** Still only 2 commits total ("Initial commit from Create Next App"
-   + one early rebrand commit). Everything since — the entire admin portal, Firebase integration,
-   all of this session's work — is uncommitted in the working tree. Ask before committing (per this
-   project's working style so far, commits happen only when explicitly requested) but flag the risk.
+2. ~~Nothing is committed to git.~~ Fixed 2026-07-20 — commit `c503445` landed the entire admin
+   portal, Firebase integration, and everything through the logo-driven rebrand. Still worth
+   committing in reasonably-sized chunks going forward rather than letting work pile up again.
 3. **`firestore.rules` / `storage.rules` deployment status is unconfirmed.** The files exist in the
    repo but whether they've actually been pasted into the Firebase console (Firestore Rules tab /
    Storage Rules tab) hasn't been verified in this session. If product/hero photo uploads or writes
@@ -228,7 +227,16 @@ a real spreadsheet, actual SMS/email delivery.
 4. **Discounts, promotions, real best-sellers, animation pass** — `compareAtPrice`, `PromoBar` +
    Settings tab, `getTopSellers()`, Framer Motion (`Reveal`, `MotionLink`, `CountUp`, hover/tap
    micro-interactions), plus a general polish pass (empty states, focus rings, loading skeletons).
-5. **Logo-driven rebrand + real notifications + CSV import** (2026-07-20, most recent) — client
+5. **Logo-driven rebrand + real notifications + CSV import** (2026-07-20) — client
    provided their actual logo; palette retuned to blend its brown/green/gold/orange in (refined, not
    full saturation); removed customer accounts entirely; built real SMS/email sending via Arkesel +
    Resend; built bulk CSV product import. This file was written at the end of this phase.
+6. **Local verification pass** (2026-07-20, most recent) — confirmed `c503445` is the current tip and
+   `firestore.rules`/`storage.rules` exist on disk as described above (deployment status to the
+   Firebase console itself still unconfirmed — see Known Gaps #3). Hit the stale-Turbopack-cache
+   gotcha for real (dev server served a parse error for a file that was actually fine); fixed by
+   stopping the server, `rm -rf .next`, restarting — confirms that Gotchas entry is accurate. Client's
+   real logo file was shared as a chat image but has **not** been saved into `public/` yet — no
+   filesystem path was available to place it automatically. Next step once the client drops
+   `public/logo.png` (or `.svg`): swap every `bg-sunset-500` + `<Leaf` placeholder (header, footer,
+   admin login, admin dashboard sidebar) for the real image.

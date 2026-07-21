@@ -92,3 +92,77 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Slow-drifting gradient-mesh blobs — used behind the hero for a "living"
+   background instead of a static gradient. Kept purely CSS so it costs
+   nothing on the main thread. */
+@keyframes drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(5%, -6%) scale(1.12); }
+}
+@keyframes drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-6%, 5%) scale(1.06); }
+}
+@keyframes drift-c {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(4%, 6%) scale(0.94); }
+}
+
+.animate-drift-a { animation: drift-a 22s ease-in-out infinite; }
+.animate-drift-b { animation: drift-b 26s ease-in-out infinite; }
+.animate-drift-c { animation: drift-c 19s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-drift-a, .animate-drift-b, .animate-drift-c {
+    animation: none;
+  }
+}
+
+/* Reusable glassmorphism surfaces — real transparency + a diagonal "sheen"
+   highlight (like light catching curved glass) + an inset top-edge glow,
+   not just a flat blurred-white box. Use alongside Tailwind utilities for
+   layout/spacing/radius. */
+.glass {
+  position: relative;
+  background-image: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.16) 55%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow:
+    0 8px 32px rgba(36, 31, 22, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.glass-amber {
+  background-image: linear-gradient(
+    135deg,
+    rgba(221, 143, 46, 0.6) 0%,
+    rgba(221, 143, 46, 0.3) 100%
+  );
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 8px 28px rgba(157, 96, 21, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.glass-forest {
+  background-image: linear-gradient(
+    135deg,
+    rgba(40, 58, 23, 0.7) 0%,
+    rgba(40, 58, 23, 0.4) 100%
+  );
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}

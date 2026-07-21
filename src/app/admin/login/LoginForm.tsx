@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
-import { Leaf, LogIn } from "lucide-react";
+import { ArrowLeft, LogIn } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { auth } from "@/lib/firebase";
 
 export function LoginForm() {
@@ -34,12 +36,18 @@ export function LoginForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-sand-100 px-6">
-      <div className="w-full max-w-sm rounded-2xl border border-ink-900/8 bg-cream-50 p-8 shadow-lg shadow-ink-900/5">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-gradient-to-br from-sand-300 via-sand-200 to-sand-100 px-6">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 text-sm font-semibold text-ink-700 transition-colors hover:text-amber-600"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to site
+      </Link>
+
+      <div className="w-full max-w-sm rounded-2xl border border-white/50 bg-white/70 p-8 shadow-xl shadow-ink-900/10 backdrop-blur-2xl">
         <div className="flex items-center gap-2">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sunset-500 text-white">
-            <Leaf className="h-5 w-5" />
-          </span>
+          <Logo className="h-10" />
           <span className="font-display leading-tight">
             <span className="block text-lg font-bold text-ink-900">Packaging</span>
             <span className="block text-xs font-bold tracking-widest text-amber-600">
@@ -48,7 +56,7 @@ export function LoginForm() {
           </span>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        <form onSubmit={handleSubmit} autoComplete="off" className="mt-8 space-y-5">
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
               Email Address
@@ -56,7 +64,9 @@ export function LoginForm() {
             <input
               required
               type="email"
-              autoComplete="username"
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@packagingambassador.com"
@@ -70,7 +80,9 @@ export function LoginForm() {
             <input
               required
               type="password"
-              autoComplete="current-password"
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
