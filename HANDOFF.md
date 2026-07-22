@@ -1,6 +1,6 @@
 # Packaging Ambassadors — Project Handoff
 
-Last updated: 2026-07-21 (Brevo email + blog CMS + rate limiting pass). Read this before touching the codebase — it explains what exists, why it's
+Last updated: 2026-07-21 (Lenis scroll-limit fix). Read this before touching the codebase — it explains what exists, why it's
 built the way it is, and what's still missing. This is a living document; keep it updated as the
 project changes so the next session (human or AI) doesn't have to reconstruct context from scratch.
 
@@ -157,7 +157,17 @@ is real Firestore, live and multi-user:
   `.glass` `background-image` would visually mask their `hover:bg-amber-500` background-color swap.
 - **Motion polish**: Lenis smooth-scroll (`src/components/SmoothScroll.tsx`, `(site)`-scoped only,
   resets scroll position on route change via `usePathname()` — without that reset, client-side nav
-  left the new page stuck at the old page's scroll offset), a fixed grain/noise texture overlay
+  left the new page stuck at the old page's scroll offset). **Real bug fixed 2026-07-21**: Lenis caches
+  its scroll limit at construction time and never recomputes it on its own — on this site, the home
+  page's real height isn't known until Firestore's categories/products data streams in *after* mount,
+  so Lenis was enforcing a stale, shorter limit and the page genuinely could not be scrolled all the way
+  to the real bottom (confirmed via `lenis.limit` reading short of `scrollHeight - clientHeight`; a
+  plain `ResizeObserver` on `document.body` did **not** reliably catch this — a `MutationObserver`
+  watching `{ childList: true, subtree: true }`, debounced 150ms, calling `lenis.resize()` did). If Lenis
+  ever seems to stop short of the bottom again, check `window.__lenis.limit` (dev-only debug hook, same
+  pattern as `window.__fb`) against `document.documentElement.scrollHeight - clientHeight` first — a
+  mismatch means this observer isn't catching some new source of dynamic height growth.
+  Also: a fixed grain/noise texture overlay
   (`GrainOverlay.tsx`, inline SVG `feTurbulence`, `(site)`-scoped), an animated gradient-mesh hero
   background (`.animate-drift-a/b/c` keyframes, respects `prefers-reduced-motion`), a "box unboxing"
   hero reveal (`HeroLidReveal.tsx` — lid flips open + tissue paper parts to reveal the hero), a
@@ -412,6 +422,10 @@ root (so `node_modules` resolves), run it with `node`, delete it immediately —
   between `/admin/login` and `/admin/dashboard` that reads as constant flickering — hit for real
   2026-07-21, see Session History. Both now use the exact same `useCurrentStaff()` check for exactly
   this reason; if you touch either file's redirect logic, keep them in lockstep.
+- **Lenis doesn't auto-detect content that grows the page after it mounts** — see the Motion Polish
+  entry under Design System above. This is a known class of Lenis issue (dynamic/async content), not
+  specific to any one library version; if a future Lenis upgrade adds a built-in fix, this workaround
+  can likely be removed, but verify with the `window.__lenis.limit` check described there first.
 
 ## Session history (chronological, high-level)
 
@@ -536,3 +550,18 @@ root (so `node_modules` resolves), run it with `node`, delete it immediately —
     - Deployed `firestore.rules` again (new `posts` collection rule) and `firebase deploy --only
       apphosting` for the code, after a clean `npx tsc --noEmit`, `npx eslint`, and `npm run build`
       all passed. Cleaned up both leftover QA test orders in the same pass.
+13. **Fixed "the website doesn't scroll to the bottom"** (2026-07-21) — real, confirmed bug: see the
+    Motion Polish entry under Design System and the new Gotchas entry above for the technical root
+    cause (Lenis's cached scroll limit going stale once Firestore data grows the page after mount).
+    Diagnosed by reading `window.__lenis.limit` directly rather than trusting screenshots — screenshots
+    taken mid-diagnosis were unreliable/blank in a way that turned out to be a browser-automation-tool
+    rendering quirk in this session, unrelated to the real bug (worth remembering: this is now the
+    *second* time in this project's history that a scroll-related screenshot looked broken and got
+    written off as a "timing artifact" — see item 7 above. That one may genuinely have been a timing
+    artifact, or may have been an earlier, less-diagnosed brush with this exact same Lenis issue; there
+    was no way to tell in hindsight. If a *third* one ever shows up, check `window.__lenis.limit` first
+    before assuming it's just a screenshot artifact again). Fix verified precisely: called
+    `lenis.scrollTo('bottom')` and confirmed `window.scrollY` landed exactly at
+    `document.documentElement.scrollHeight - clientHeight` with the footer's bottom edge flush against
+    the viewport bottom — both before the fix (stopped short) and after (reached exactly). Typechecked,
+    linted, production-built, and deployed clean.
