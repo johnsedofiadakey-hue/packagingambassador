@@ -466,10 +466,8 @@ export default function AdminSettingsPage() {
     storeName: settings.storeName,
     storePhone: settings.storePhone,
     storeEmail: settings.storeEmail,
-  });
-  const [payment, setPayment] = useState({
-    paystackPublicKey: settings.paystackPublicKey,
-    paystackSecretKey: settings.paystackSecretKey,
+    checkoutLocked: settings.checkoutLocked,
+    checkoutLockMessage: settings.checkoutLockMessage,
   });
   const [notifications, setNotifications] = useState({
     smsProvider: settings.smsProvider,
@@ -529,6 +527,36 @@ export default function AdminSettingsPage() {
               value={general.storeEmail}
               onChange={(v) => setGeneral((s) => ({ ...s, storeEmail: v }))}
             />
+
+            <div className="border-t border-ink-900/8 pt-4">
+              <label className="flex items-center gap-2 text-sm font-semibold text-ink-900">
+                <input
+                  type="checkbox"
+                  checked={general.checkoutLocked}
+                  onChange={(e) =>
+                    setGeneral((s) => ({ ...s, checkoutLocked: e.target.checked }))
+                  }
+                  className="h-4 w-4 rounded border-ink-900/20 text-amber-600 focus:ring-amber-500/40"
+                />
+                Pause checkout
+              </label>
+              <p className="mt-1 text-xs text-ink-700/60">
+                Hides the storefront&apos;s Checkout button and shows the message below instead.
+                Existing carts stay intact — customers just can&apos;t pay until this is unchecked.
+              </p>
+              {general.checkoutLocked && (
+                <div className="mt-3">
+                  <Field
+                    label="Message shown to customers"
+                    value={general.checkoutLockMessage}
+                    onChange={(v) =>
+                      setGeneral((s) => ({ ...s, checkoutLockMessage: v }))
+                    }
+                  />
+                </div>
+              )}
+            </div>
+
             <SaveButton saved={saved} />
           </form>
         )}
@@ -597,33 +625,15 @@ export default function AdminSettingsPage() {
         {tab === "Payment" && (
           <div className="max-w-sm">
             <SecretWarning>
-              These keys are stored in this browser&apos;s local storage for prototype purposes.
-              Before going live with a real Paystack account, move the secret key to a
-              server-side environment variable — never ship a live secret key to the browser.
+              Checkout charges customers for real through Paystack — but the API keys live in
+              environment variables (
+              <code className="rounded bg-ink-900/5 px-1">PAYSTACK_SECRET_KEY</code>,{" "}
+              <code className="rounded bg-ink-900/5 px-1">NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY</code>),
+              not in this form. Storing the secret key here would make it readable by any
+              signed-in staff account — and this store&apos;s settings doc is public-read besides,
+              since the storefront needs it anonymously. To change keys, update them in
+              deployment config and redeploy.
             </SecretWarning>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                updateSettings(payment);
-                flashSaved();
-              }}
-              className="space-y-4"
-            >
-              <Field
-                label="Paystack Public Key"
-                placeholder="pk_test_..."
-                value={payment.paystackPublicKey}
-                onChange={(v) => setPayment((s) => ({ ...s, paystackPublicKey: v }))}
-              />
-              <Field
-                label="Paystack Secret Key"
-                type="password"
-                placeholder="sk_test_..."
-                value={payment.paystackSecretKey}
-                onChange={(v) => setPayment((s) => ({ ...s, paystackSecretKey: v }))}
-              />
-              <SaveButton saved={saved} />
-            </form>
           </div>
         )}
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import { ArrowRight, CheckCircle2, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { PageHero } from "@/components/PageHero";
 import { useCart, lineKey } from "@/lib/cart-context";
@@ -10,23 +11,14 @@ import { formatPrice } from "@/lib/utils";
 
 export default function CartPage() {
   const { lines, updateQuantity, removeLine, clearCart, itemCount, subtotal } = useCart();
-  const { addOrder, settings } = useAdminData();
+  const { settings } = useAdminData();
   const [checkingOut, setCheckingOut] = useState(false);
   const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null);
   const [details, setDetails] = useState({ name: "", phone: "", email: "", address: "" });
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
-  const handlePlaceOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPlacingOrder(true);
-    const order = await addOrder({
-      customerName: details.name,
-      phone: details.phone,
-      email: details.email || undefined,
-      address: details.address,
-      lines,
-      subtotal,
-    });
+  const finishOrder = async (order: { id: string; customerName: string; phone: string; email?: string; subtotal: number; lines: typeof lines }) => {
     clearCart();
     setConfirmedOrderId(order.id);
     setCheckingOut(false);
@@ -53,6 +45,79 @@ export default function CartPage() {
     });
   };
 
+  const handlePlaceOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPaymentError(null);
+
+    if (!window.PaystackPop) {
+      setPaymentError("Payment isn't ready yet — please wait a moment and try again.");
+      return;
+    }
+
+    setPlacingOrder(true);
+    const reference = `PA-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const handler = window.PaystackPop.setup({
+      key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "",
+      email: details.email,
+      amount: Math.round(subtotal * 100),
+      currency: "GHS",
+      ref: reference,
+      metadata: {
+        customer: {
+          name: details.name,
+          phone: details.phone,
+          email: details.email || undefined,
+          address: details.address,
+        },
+        lines,
+        subtotal,
+      },
+      callback: (response) => {
+        (async () => {
+          try {
+            const res = await fetch("/api/payments/paystack/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                reference: response.reference,
+                customer: {
+                  name: details.name,
+                  phone: details.phone,
+                  email: details.email || undefined,
+                  address: details.address,
+                },
+                lines,
+                subtotal,
+              }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              setPaymentError(data.error || "We couldn't confirm your payment. Please try again.");
+              setPlacingOrder(false);
+              return;
+            }
+            await finishOrder({
+              id: data.id,
+              customerName: details.name,
+              phone: details.phone,
+              email: details.email || undefined,
+              subtotal: data.subtotal,
+              lines: data.lines,
+            });
+          } catch {
+            setPaymentError("We couldn't confirm your payment. Please try again.");
+            setPlacingOrder(false);
+          }
+        })();
+      },
+      onClose: () => {
+        setPlacingOrder(false);
+      },
+    });
+    handler.openIframe();
+  };
+
   if (confirmedOrderId) {
     return (
       <div>
@@ -65,8 +130,8 @@ export default function CartPage() {
             Order received
           </h2>
           <p className="mt-2 text-ink-700/70">
-            We&apos;ve logged your order and our team will reach out to confirm delivery details
-            and payment.
+            Payment received — we&apos;ve logged your order and our team will reach out to
+            confirm delivery details.
           </p>
           <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/5 px-5 py-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-700/60">
@@ -183,7 +248,11 @@ export default function CartPage() {
                 <span>{formatPrice(subtotal)}</span>
               </div>
 
-              {!checkingOut ? (
+              {settings.checkoutLocked ? (
+                <p className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-sm text-ink-800">
+                  {settings.checkoutLockMessage}
+                </p>
+              ) : !checkingOut ? (
                 <button
                   onClick={() => setCheckingOut(true)}
                   className="mt-6 w-full rounded-full bg-amber-500 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
@@ -192,6 +261,7 @@ export default function CartPage() {
                 </button>
               ) : (
                 <form onSubmit={handlePlaceOrder} className="mt-6 space-y-3">
+                  <Script src="https://js.paystack.co/v1/inline.js" strategy="afterInteractive" />
                   <input
                     required
                     placeholder="Full name"
@@ -208,8 +278,9 @@ export default function CartPage() {
                     className="w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
                   />
                   <input
+                    required
                     type="email"
-                    placeholder="Email (optional)"
+                    placeholder="Email"
                     value={details.email}
                     onChange={(e) => setDetails((d) => ({ ...d, email: e.target.value }))}
                     className="w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
@@ -223,15 +294,18 @@ export default function CartPage() {
                     className="w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
                   />
                   <p className="text-xs text-ink-700/50">
-                    Online payment isn&apos;t connected yet — placing an order logs it for our
-                    team to confirm delivery and payment with you directly.
+                    You&apos;ll pay securely via Paystack. Your order is confirmed once payment
+                    succeeds.
                   </p>
+                  {paymentError && (
+                    <p className="text-xs font-medium text-red-600">{paymentError}</p>
+                  )}
                   <button
                     type="submit"
                     disabled={placingOrder}
                     className="w-full rounded-full bg-amber-500 py-3 font-semibold text-white transition-colors hover:bg-amber-600 disabled:opacity-60"
                   >
-                    {placingOrder ? "Placing Order…" : "Place Order"}
+                    {placingOrder ? "Processing…" : `Pay ${formatPrice(subtotal)}`}
                   </button>
                 </form>
               )}

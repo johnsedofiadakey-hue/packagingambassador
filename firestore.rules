@@ -43,12 +43,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Guest checkout creates orders without being signed in. Staff manage them.
+    // Orders are only ever created server-side, via firebase-admin, after a Paystack payment
+    // verifies (src/app/api/payments/paystack/verify) — that path bypasses these rules
+    // entirely, so no client `create` rule is needed or wanted here (a client `create` rule
+    // would let anyone write junk orders straight to Firestore with no payment behind them).
     match /orders/{orderId} {
-      allow create: if request.resource.data.keys().hasAll(
-          ['customerName', 'phone', 'address', 'lines', 'subtotal', 'status', 'createdAt']
-        )
-        && request.resource.data.status == 'Pending';
       allow read: if isActiveStaff();
       allow update: if isAdmin() || isSales();
       allow delete: if isAdmin();
@@ -61,13 +60,19 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Append-only staff action log — any active staff member logs their own actions;
+    // only Admin can review the log, and nobody can edit or delete an entry.
+    match /activity_log/{logId} {
+      allow read: if isAdmin();
+      allow create: if isActiveStaff();
+      allow update, delete: if false;
+    }
+
     // Store settings — public read because the storefront itself depends on this doc
     // (hero copy, promotion banner, theme colors, page content, general contact info are
     // all read by anonymous visitors on every page load via AdminDataProvider). Only
-    // Admins can write. NOTE: paystackSecretKey currently lives in this same doc and is
-    // therefore publicly readable too — harmless today because it's always empty (payments
-    // aren't wired to anything real yet, see HANDOFF.md Known Gaps), but it must move to a
-    // staff-only doc or a server-side secret before a real key is ever put in it.
+    // Admins can write. Paystack keys are NOT stored here — they live in server env vars
+    // (PAYSTACK_SECRET_KEY, NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY), same as Arkesel/Brevo.
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();

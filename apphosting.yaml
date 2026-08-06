@@ -8,6 +8,13 @@
 # `firebase apphosting:secrets:set ARKESEL_API_KEY` (and BREVO_API_KEY),
 # then add matching `secret:` entries below. Never commit real key values to
 # this file.
+#
+# PAYSTACK_SECRET_KEY follows the same pattern — server-only, set via
+# `firebase apphosting:secrets:set PAYSTACK_SECRET_KEY` then a `secret:`
+# entry below, never a plain `value:`. It currently exists only in
+# .env.local for local dev (test keys). NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY is
+# safe to commit as a plain `value:` like the Firebase config vars below
+# once deploying for real.
 
 runConfig:
   minInstances: 0

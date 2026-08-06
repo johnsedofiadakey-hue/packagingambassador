@@ -8,17 +8,19 @@ import {
   useState,
 } from "react";
 import {
+  addDoc,
   collection,
   doc,
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
   setDoc,
   updateDoc,
   deleteDoc,
 } from "firebase/firestore";
 import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
-import { db, getSecondaryAuth } from "@/lib/firebase";
+import { auth, db, getSecondaryAuth } from "@/lib/firebase";
 import type { Category, Product } from "@/lib/products";
 import type { CartLine } from "@/lib/cart-context";
 
@@ -34,6 +36,14 @@ export type Order = {
   lines: CartLine[];
   subtotal: number;
   status: OrderStatus;
+  paystackReference?: string;
+  paidAt?: string;
+  /** Set to false only on an order reconstructed from the Paystack webhook fallback path —
+   *  the primary verify route never sets this, so its absence means "normal, verified." */
+  serverValidated?: boolean;
+  webhookReconstructed?: boolean;
+  /** True if checkoutLocked was on in settings at the moment this order was created. */
+  orderedWhileLocked?: boolean;
 };
 
 export type StaffRole = "Admin" | "Sales Staff" | "Inventory Staff";
@@ -104,8 +114,8 @@ export type StoreSettings = {
   storeName: string;
   storePhone: string;
   storeEmail: string;
-  paystackPublicKey: string;
-  paystackSecretKey: string;
+  checkoutLocked: boolean;
+  checkoutLockMessage: string;
   smsProvider: string;
   smsSenderId: string;
   emailProvider: string;
@@ -181,8 +191,9 @@ const DEFAULT_SETTINGS: StoreSettings = {
   storeName: "Packaging Ambassadors",
   storePhone: "+233 XX XXX XXXX",
   storeEmail: "hello@packagingambassadors.com",
-  paystackPublicKey: "",
-  paystackSecretKey: "",
+  checkoutLocked: false,
+  checkoutLockMessage:
+    "We're temporarily not accepting new orders — please check back soon, or contact us directly.",
   smsProvider: "Arkesel",
   smsSenderId: "PackAmb",
   emailProvider: "Brevo",
@@ -314,19 +325,53 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Fire-and-forget by design — a logging failure must never block the mutation it's
+  // recording. Resolves the actor's name/role from the already-loaded `staff` state rather
+  // than an extra Firestore read.
+  const logActivity = (action: string, details?: Record<string, unknown>) => {
+    const uidValue = auth.currentUser?.uid;
+    if (!uidValue) return;
+    const actor = staff.find((s) => s.id === uidValue);
+    addDoc(collection(db, "activity_log"), {
+      uid: uidValue,
+      name: actor?.name ?? auth.currentUser?.email ?? "Unknown",
+      role: actor?.role ?? null,
+      action,
+      details: details ?? null,
+      timestamp: serverTimestamp(),
+    }).catch((err) => {
+      console.error("[activity_log] failed to write", err);
+    });
+  };
+
   const addProduct = async (input: Omit<Product, "slug"> & { slug?: string }) => {
     const slug = input.slug ?? slugify(input.name);
     const product: Product = { ...input, slug } as Product;
     await setDoc(doc(db, "products", slug), product);
+    logActivity("product_added", { slug: product.slug, name: product.name });
     return product;
   };
 
   const updateProduct = async (slug: string, patch: Partial<Product>) => {
+    const current = products.find((p) => p.slug === slug);
     await updateDoc(doc(db, "products", slug), patch);
+    const stockFrom = current?.stock;
+    const stockTo = patch.stock;
+    const suspicious =
+      typeof stockTo === "number" &&
+      typeof stockFrom === "number" &&
+      stockFrom > 0 &&
+      stockTo > stockFrom * 3;
+    logActivity("product_updated", {
+      slug,
+      fields: Object.keys(patch),
+      ...(typeof stockTo === "number" ? { stockFrom, stockTo, suspicious } : {}),
+    });
   };
 
   const removeProduct = async (slug: string) => {
     await deleteDoc(doc(db, "products", slug));
+    logActivity("product_removed", { slug });
   };
 
   const addCategory = async (input: Omit<Category, "slug"> & { slug?: string }) => {
@@ -364,6 +409,7 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
 
   const updateOrderStatus = async (id: string, status: OrderStatus) => {
     await updateDoc(doc(db, "orders", id), { status });
+    logActivity("order_status_changed", { orderId: id, status });
   };
 
   const addStaff = async (input: {
@@ -391,15 +437,18 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       createdAt: new Date().toISOString(),
     };
     await setDoc(doc(db, "staff", newUid), staffMember);
+    logActivity("staff_added", { staffId: newUid, name: input.name, role: input.role });
     return staffMember;
   };
 
   const updateStaff = async (id: string, patch: Partial<Omit<StaffMember, "id">>) => {
     await updateDoc(doc(db, "staff", id), patch);
+    logActivity("staff_updated", { staffId: id, fields: Object.keys(patch) });
   };
 
   const removeStaff = async (id: string) => {
     await deleteDoc(doc(db, "staff", id));
+    logActivity("staff_removed", { staffId: id });
   };
 
   const addPost = async (input: Omit<BlogPost, "slug"> & { slug?: string }) => {
@@ -419,6 +468,7 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
 
   const updateSettings = async (patch: Partial<StoreSettings>) => {
     await setDoc(doc(db, "settings", "store"), patch, { merge: true });
+    logActivity("settings_changed", { fields: Object.keys(patch) });
   };
 
   // Storefront pages only ever need products/categories, and are reachable by

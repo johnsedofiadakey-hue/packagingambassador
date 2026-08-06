@@ -14,6 +14,7 @@ import {
   LogOut,
   ExternalLink,
   Newspaper,
+  History,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { auth } from "@/lib/firebase";
@@ -26,6 +27,7 @@ const NAV = [
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag, adminOnly: false },
   { href: "/admin/blog", label: "Blog", icon: Newspaper, adminOnly: true },
   { href: "/admin/staff", label: "Staff", icon: Users, adminOnly: true },
+  { href: "/admin/activity", label: "Activity Log", icon: History, adminOnly: true },
   { href: "/admin/settings", label: "Settings", icon: Settings, adminOnly: true },
 ];
 

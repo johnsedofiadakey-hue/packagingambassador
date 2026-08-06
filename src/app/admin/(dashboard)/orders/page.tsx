@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { ChevronDown, ChevronUp, ShoppingBag } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, ShoppingBag } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PageLoading } from "@/components/PageLoading";
 import { useAdminData, type OrderStatus } from "@/lib/store";
@@ -57,7 +57,18 @@ export default function AdminOrdersPage() {
                 return (
                   <Fragment key={order.id}>
                     <tr>
-                      <td className="px-5 py-3 font-semibold text-ink-900">{order.id}</td>
+                      <td className="px-5 py-3 font-semibold text-ink-900">
+                        {order.id}
+                        {order.serverValidated === false && (
+                          <span
+                            title="Reconstructed from a Paystack webhook — verify never landed. Double-check before treating as final."
+                            className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+                          >
+                            <AlertTriangle className="h-3 w-3" />
+                            Needs review
+                          </span>
+                        )}
+                      </td>
                       <td className="px-5 py-3 text-ink-700/80">
                         {order.customerName}
                         <div className="text-xs text-ink-700/50">{order.phone}</div>

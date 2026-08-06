@@ -27,8 +27,9 @@ npm run dev      # http://localhost:3000 (or next available port)
 Requires `.env.local` (gitignored, not committed) with:
 - `NEXT_PUBLIC_FIREBASE_*` (6 vars) — Firebase project config, already set up for this project.
 - `ARKESEL_API_KEY`, `BREVO_API_KEY` — server-only, currently **blank placeholders**. SMS/email
-  notifications silently no-op until these are filled in with real provider keys (the payment/
-  Paystack key is a separate, still-pending item — see Known Gaps #1).
+  notifications silently no-op until these are filled in with real provider keys.
+- `PAYSTACK_SECRET_KEY`, `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` — currently set to real **test** keys
+  (`sk_test_...` / `pk_test_...`). See Known Gaps #1 for what's needed to switch to live keys.
 
 **Admin login**: `/admin/login`. The first admin account (Firebase Auth user + matching `staff/{uid}`
 Firestore doc with `role: "Admin"`, `active: true`) was created manually via the Firebase console —
@@ -259,10 +260,10 @@ is real Firestore, live and multi-user:
   upload), **Page Content** (added 2026-07-21 — About page intro/story paragraphs, the 4 homepage
   "Why Us" cards, Footer tagline; confirmed scope, *not* a full site-wide CMS — most other copy is
   still hardcoded in component files by design), **Colors & Branding** (added 2026-07-21 — see Live
-  color theming above), **Promotion** (the sitewide banner above), Payment (Paystack keys — storage-
-  only, not wired to real payment processing yet), Notifications (SMS/email provider *config* — sender
-  name, from address; **actual API keys live in server env vars, not here**, see below), Account
-  (change password for the signed-in staff member).
+  color theming above), **Promotion** (the sitewide banner above), Payment (informational only as of
+  2026-08-06 — Paystack keys live in env vars, not this form, same reasoning as Notifications below),
+  Notifications (SMS/email provider *config* — sender name, from address; **actual API keys live in
+  server env vars, not here**, see below), Account (change password for the signed-in staff member).
 
 ## Notifications (SMS + email)
 
@@ -345,13 +346,11 @@ Fully responsive, Tailwind `md:`-breakpoint mobile-first throughout — verified
 ## Known gaps (honest, prioritized)
 
 **Should do before this is a real, live store:**
-1. **Payments aren't real.** Checkout logs a "Pending" order; nothing actually charges the customer.
-   Paystack fields in Settings are stored config only, with an on-page warning. This is the single
-   biggest gap between what exists and a functioning store. **Client will provide the Paystack API key
-   later** (2026-07-21) — everything else in this list was explicitly prioritized ahead of it for that
-   reason. When the key arrives: wire real Paystack charge initialization/verification into the
-   checkout flow in `(site)/cart/page.tsx`, move `paystackSecretKey` off the public-read `settings` doc
-   first (see item 3 below).
+1. ~~Payments aren't real.~~ Fixed 2026-08-06 — see Session History. Checkout now uses real Paystack
+   Inline, verified server-side before an order is ever created. **Currently running on TEST keys**
+   (`sk_test_...` / `pk_test_...`, in `.env.local` only) — swap for live keys via
+   `firebase apphosting:secrets:set PAYSTACK_SECRET_KEY` + an `apphosting.yaml` entry for
+   `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` before this goes live for real money.
 2. ~~Nothing is committed to git.~~ Fixed 2026-07-20 — commit `c503445` landed the entire admin
    portal, Firebase integration, and everything through the logo-driven rebrand. Still worth
    committing in reasonably-sized chunks going forward rather than letting work pile up again.
@@ -361,9 +360,8 @@ Fully responsive, Tailwind `md:`-breakpoint mobile-first throughout — verified
    storefront in production (permission-denied on every page) because `settings/{settingId}` was
    `allow read: if isActiveStaff()`, but the storefront reads that same doc anonymously for hero copy/
    promotion/theme/page content. Fixed by making settings public-read (documented in the rules file
-   itself — `paystackSecretKey` currently rides along in that same doc and is technically public too,
-   harmless today since it's always empty, but **must move to a staff-only doc before a real key is
-   ever entered**). Separately, `AdminDataProvider`'s `orders`/`staff` listeners had no error handler
+   itself — `paystackSecretKey` no longer lives in this doc at all as of 2026-08-06, see Known Gap #1;
+   it's a server env var now). Separately, `AdminDataProvider`'s `orders`/`staff` listeners had no error handler
    and logged uncaught permission-denied errors for every anonymous visitor (functionally harmless —
    `orders`/`staff` just stay empty, which the storefront already handles — but noisy); both now pass
    a silent error callback. Both fixes are live. `storage.rules` deployed successfully in a follow-up
@@ -565,3 +563,30 @@ root (so `node_modules` resolves), run it with `node`, delete it immediately —
     `document.documentElement.scrollHeight - clientHeight` with the footer's bottom edge flush against
     the viewport bottom — both before the fix (stopped short) and after (reached exactly). Typechecked,
     linted, production-built, and deployed clean.
+14. **Wired real Paystack payment into checkout** (2026-08-06) — closed the last real gap from Known
+    Gaps #1. User supplied real Paystack **test** keys (`sk_test_...` / `pk_test_...`) in chat. Moved
+    both keys out of the public-read `settings` Firestore doc (where the old prototype UI would have
+    stored them) into env vars (`PAYSTACK_SECRET_KEY` server-only, `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`
+    client-safe) — same pattern as Arkesel/Brevo. Admin Settings' Payment tab now just points at those
+    env vars (mirrors the Notifications tab's `SecretWarning`) instead of taking key input. Checkout
+    (`(site)/cart/page.tsx`) opens a Paystack Inline popup instead of writing an order directly; a new
+    `src/app/api/payments/paystack/verify` route (mirrors `orders/track`'s rate-limit → validate →
+    `firebase-admin` pattern) verifies the transaction server-side against Paystack's API — checking
+    `status === "success"`, exact pesewas amount, and `currency === "GHS"` — before ever creating the
+    order, so a client can't spoof a paid order. Orders are now created only through this route
+    (`status: "Processing"`, plus `paystackReference`/`paidAt`); `firestore.rules` no longer has a
+    client `create` rule on `orders` at all, since there's no legitimate reason for a client to write
+    one directly anymore. Idempotent on `paystackReference` (a retried verify call returns the existing
+    order rather than duplicating). Hit one real integration bug: Paystack's inline.js throws "Please
+    put your Paystack Inline javascript file inside of a form element" — turned out to be a red herring
+    (Next's `next/script` always appends to `<body>` regardless of JSX position, so true form-nesting
+    isn't achievable, but the popup works fine anyway; left the `<Script>` inside the form for intent).
+    Also found mid-verification that this sandbox's default browser-automation pane cannot deliver
+    clicks into cross-origin iframes (Paystack's checkout UI) at all — `elementFromPoint` resolved
+    correctly but clicks were no-ops; switched to the `claude-in-chrome` real-Chrome tool, which handled
+    it fine. Verified end-to-end for real: completed a live Paystack test-mode Mobile Money transaction,
+    confirmed the resulting Firestore order had the right `status`/`paystackReference`/`paidAt`, confirmed
+    `/track` could find it, confirmed re-verifying the same reference didn't create a duplicate, confirmed
+    missing-fields returns 400 and a bogus reference returns 502 with no order created, then deleted the
+    test order. Typechecked, linted, and production-built clean. **Still on test keys** — see Known Gap #1
+    for what's needed to go live with real charges.
