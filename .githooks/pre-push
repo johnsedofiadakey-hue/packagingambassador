@@ -1,0 +1,17 @@
+#!/bin/sh
+# Blocks a push if the project doesn't type-check and build, so a broken commit
+# can't reach main and stall the auto-deploy. Catches both TS errors and
+# build-only failures (e.g. a client hook used outside its provider, which tsc
+# alone won't flag). Bypass in a genuine emergency with `git push --no-verify`.
+#
+# Enable once per clone:  git config core.hooksPath .githooks
+
+set -e
+
+echo "▶ pre-push: type-check…"
+npx tsc --noEmit || { echo "✗ tsc failed — push aborted (use --no-verify to override)."; exit 1; }
+
+echo "▶ pre-push: production build…"
+npm run build || { echo "✗ next build failed — push aborted (use --no-verify to override)."; exit 1; }
+
+echo "✓ type-check + build clean — pushing."

@@ -318,6 +318,16 @@ gated admin pages) that can't be statically exported.
 - Backend is **now connected to the GitHub repo** (`johnsedofiadakey-hue/packagingambassador`, branch
   `main`) with **automatic rollouts** — a push to `main` triggers a build+deploy on its own. (The old
   note that there was no repo connection is stale as of 2026-08-07.)
+- **Build guards** (added 2026-08-07 after a run of pushes broke the build and stalled the
+  auto-deploy): a **GitHub Action** (`.github/workflows/ci.yml`) runs `tsc --noEmit` + `next build`
+  on every push to `main` and every PR — public `NEXT_PUBLIC_*` config is inlined in the workflow so
+  the build can prerender (server secrets are runtime-only). A **pre-push git hook**
+  (`.githooks/pre-push`) runs the same locally and aborts the push on failure. **Enable the hook once
+  per clone: `git config core.hooksPath .githooks`** (bypass in an emergency with `git push
+  --no-verify`). The hook only covers pushes from a clone that enabled it; the Action covers all
+  pushers. Neither *blocks* the App Hosting deploy (it builds independently) — but a failed build just
+  keeps the last good revision live, and these make the failure fast and attributable instead of
+  surfacing later as "the deploy isn't working."
 - Requires the **Blaze (pay-as-you-go) plan**.
 - To redeploy: **just push to `origin main`** — App Hosting auto-builds. Watch the rollout:
   `gcloud builds list --project=packagingambassador --region=us-central1 --limit=3 --format="table(id,createTime,status)"`.
