@@ -28,6 +28,9 @@ type CartContextValue = {
   clearCart: () => void;
   itemCount: number;
   subtotal: number;
+  isOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -40,6 +43,10 @@ function lineKey(line: Pick<CartLine, "slug" | "size" | "color">) {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const openCart = useCallback(() => setIsOpen(true), []);
+  const closeCart = useCallback(() => setIsOpen(false), []);
 
   useEffect(() => {
     try {
@@ -58,6 +65,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [lines, hydrated]);
 
   const addToCart = useCallback<CartContextValue["addToCart"]>((product, opts) => {
+    setIsOpen(true);
     setLines((prev) => {
       const key = lineKey({ slug: product.slug, size: opts.size, color: opts.color });
       const existing = prev.find((l) => lineKey(l) === key);
@@ -104,8 +112,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ lines, addToCart, updateQuantity, removeLine, clearCart, itemCount, subtotal }),
-    [lines, addToCart, updateQuantity, removeLine, clearCart, itemCount, subtotal]
+    () => ({ lines, addToCart, updateQuantity, removeLine, clearCart, itemCount, subtotal, isOpen, openCart, closeCart }),
+    [lines, addToCart, updateQuantity, removeLine, clearCart, itemCount, subtotal, isOpen, openCart, closeCart]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -53,6 +53,28 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Same reasoning as orders — created server-side only, via firebase-admin, after a
+    // wholesale Paystack payment verifies. No client create rule.
+    match /wholesaleOrders/{orderId} {
+      allow read: if isActiveStaff();
+      allow update: if isAdmin() || isSales();
+      allow delete: if isAdmin();
+    }
+
+    // Lightweight wholesale CRM record, upserted server-side alongside wholesale order
+    // creation — staff can look customers up, nobody writes it from the client.
+    match /businessCustomers/{customerId} {
+      allow read: if isActiveStaff();
+      allow write: if false;
+    }
+
+    // Monthly revenue rollup (revenueStats/{YYYY-MM}), incremented server-side at order
+    // creation and read by the analytics dashboard. Staff read, server-only write.
+    match /revenueStats/{month} {
+      allow read: if isActiveStaff();
+      allow write: if false;
+    }
+
     // Any signed-in staff member can read the roster (to resolve their own
     // role); only Admins manage it.
     match /staff/{staffId} {

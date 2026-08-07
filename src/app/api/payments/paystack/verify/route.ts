@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { rateLimit } from "@/lib/rate-limit";
-import { createPaidOrderIfNotExists, isValidCartLine } from "@/lib/payments/create-paid-order";
+import {
+  createPaidOrderIfNotExists,
+  createPaidWholesaleOrderIfNotExists,
+  isValidCartLine,
+  verifyPaystackCharge,
+} from "@/lib/payments/create-paid-order";
 
-const GENERIC_ERROR = "We couldn't confirm your payment. Please try again or contact us.";
 const RATE_LIMIT = 12;
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 
@@ -18,17 +22,25 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
+  const channel = body?.channel === "wholesale" ? "wholesale" : "retail";
   const reference = typeof body?.reference === "string" ? body.reference.trim() : "";
   const customer = body?.customer;
   const lines = Array.isArray(body?.lines) ? body.lines : null;
   const subtotal = typeof body?.subtotal === "number" ? body.subtotal : NaN;
 
   const validCustomer =
-    customer &&
-    typeof customer.name === "string" &&
-    typeof customer.phone === "string" &&
-    typeof customer.address === "string" &&
-    (customer.email === undefined || typeof customer.email === "string");
+    channel === "wholesale"
+      ? customer &&
+        typeof customer.businessName === "string" &&
+        typeof customer.contactName === "string" &&
+        typeof customer.phone === "string" &&
+        typeof customer.deliveryAddress === "string" &&
+        (customer.email === undefined || typeof customer.email === "string")
+      : customer &&
+        typeof customer.name === "string" &&
+        typeof customer.phone === "string" &&
+        typeof customer.address === "string" &&
+        (customer.email === undefined || typeof customer.email === "string");
 
   if (
     !reference ||
@@ -50,48 +62,22 @@ export async function POST(request: Request) {
     );
   }
 
-  let verifyRes;
-  try {
-    verifyRes = await fetch(
-      `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
-      { headers: { Authorization: `Bearer ${secretKey}` } }
-    );
-  } catch {
-    return NextResponse.json(
-      { error: "Couldn't reach Paystack to verify payment. Please try again shortly." },
-      { status: 502 }
-    );
-  }
-
-  if (!verifyRes.ok) {
-    console.error("[paystack] verify request failed", verifyRes.status, await verifyRes.text());
-    return NextResponse.json({ error: GENERIC_ERROR }, { status: 502 });
-  }
-
-  const verifyJson = await verifyRes.json().catch(() => null);
-  const data = verifyJson?.data;
-  const expectedAmount = Math.round(subtotal * 100);
-
-  if (
-    !data ||
-    data.status !== "success" ||
-    data.currency !== "GHS" ||
-    data.amount !== expectedAmount
-  ) {
-    console.error("[paystack] verification mismatch", { reference, data, expectedAmount });
-    return NextResponse.json({ error: GENERIC_ERROR }, { status: 402 });
+  const verifyResult = await verifyPaystackCharge(reference, Math.round(subtotal * 100), secretKey);
+  if (!verifyResult.ok) {
+    return NextResponse.json({ error: verifyResult.error }, { status: verifyResult.status });
   }
 
   const settingsSnap = await getAdminDb().collection("settings").doc("store").get().catch(() => null);
-  const checkoutWasLocked = settingsSnap?.data()?.checkoutLocked === true;
+  const settingsData = settingsSnap?.data();
+  const checkoutWasLocked =
+    channel === "wholesale"
+      ? settingsData?.wholesaleCheckoutLocked === true
+      : settingsData?.checkoutLocked === true;
 
-  const { order } = await createPaidOrderIfNotExists({
-    reference,
-    customer,
-    lines,
-    subtotal,
-    checkoutWasLocked,
-  });
+  const { order } =
+    channel === "wholesale"
+      ? await createPaidWholesaleOrderIfNotExists({ reference, customer, lines, subtotal, checkoutWasLocked })
+      : await createPaidOrderIfNotExists({ reference, customer, lines, subtotal, checkoutWasLocked });
 
   return NextResponse.json(order);
 }

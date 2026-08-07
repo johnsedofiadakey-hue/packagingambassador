@@ -25,7 +25,13 @@ export async function POST(request: Request) {
 
   let snap;
   try {
-    snap = await getAdminDb().collection("orders").doc(orderId).get();
+    const db = getAdminDb();
+    snap = await db.collection("orders").doc(orderId).get();
+    if (!snap.exists) {
+      // Same order-ID scheme, different collection — a wholesale customer uses this exact
+      // same tracking page and form, no separate flow.
+      snap = await db.collection("wholesaleOrders").doc(orderId).get();
+    }
   } catch {
     return NextResponse.json(
       { error: "Tracking is temporarily unavailable. Please try again shortly." },

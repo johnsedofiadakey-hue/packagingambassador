@@ -2,25 +2,38 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { CheckCircle2, Minus, Plus, ShoppingCart, Star, Truck } from "lucide-react";
 import { ProductArt } from "@/components/ProductArt";
-import { useCart } from "@/lib/cart-context";
-import { formatPrice, getDiscountPercent } from "@/lib/utils";
+import { formatPrice, getDiscountPercent, getDisplayPrice, type PriceMode } from "@/lib/utils";
 import { BADGE_STYLES, type Product } from "@/lib/products";
 
-export function ProductDetail({ product }: { product: Product }) {
-  const discount = getDiscountPercent(product);
+/**
+ * Doesn't call useCart()/useWholesaleCart() itself — this component is mounted inside either
+ * CartProvider (retail) or WholesaleCartProvider (wholesale), never both, and React hooks can't
+ * be called conditionally. The parent page calls whichever hook is valid for its own provider
+ * tree and passes the add function down.
+ */
+export function ProductDetail({
+  product,
+  mode = "retail",
+  onAddToCart,
+}: {
+  product: Product;
+  mode?: PriceMode;
+  onAddToCart: (opts: { color: string; size: string; quantity: number }) => void;
+}) {
+  const isWholesale = mode === "wholesale";
+  const minQty = isWholesale ? (product.wholesaleMinQty ?? 1) : 1;
+  const price = getDisplayPrice(product, mode);
+  const discount = isWholesale ? null : getDiscountPercent(product);
   const [color, setColor] = useState(product.colors[0]?.name ?? "");
   const [size, setSize] = useState(product.sizes[0]);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(minQty);
   const [justAdded, setJustAdded] = useState(false);
-  const { addToCart } = useCart();
-  const router = useRouter();
 
   const handleAdd = () => {
-    addToCart(product, { color, size, quantity });
+    onAddToCart({ color, size, quantity });
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 2000);
   };
@@ -30,12 +43,18 @@ export function ProductDetail({ product }: { product: Product }) {
       <nav className="flex flex-wrap items-center gap-2 text-sm text-ink-700/70">
         <Link href="/" className="hover:text-ink-900">Home</Link>
         <span>/</span>
-        <Link href="/shop" className="hover:text-ink-900">Shop</Link>
-        <span>/</span>
-        <Link href={`/category/${product.category}`} className="hover:text-ink-900">
-          {product.categoryLabel}
+        <Link href={isWholesale ? "/wholesale" : "/shop"} className="hover:text-ink-900">
+          {isWholesale ? "Wholesale" : "Shop"}
         </Link>
         <span>/</span>
+        {!isWholesale && (
+          <>
+            <Link href={`/category/${product.category}`} className="hover:text-ink-900">
+              {product.categoryLabel}
+            </Link>
+            <span>/</span>
+          </>
+        )}
         <span className="text-ink-900">{product.name}</span>
       </nav>
 
@@ -82,9 +101,14 @@ export function ProductDetail({ product }: { product: Product }) {
               </span>
             )}
             <span className="font-display text-3xl font-bold text-ink-900">
-              {formatPrice(product.price)}
+              {formatPrice(price)}
             </span>
             <span className="text-ink-700/70">per {product.unit}</span>
+            {isWholesale && minQty > 1 && (
+              <span className="ml-1 rounded-full bg-forest-600/10 px-2.5 py-1 text-xs font-semibold text-forest-700">
+                Min. order {minQty}
+              </span>
+            )}
           </div>
 
           <p className="mt-4 max-w-xl text-ink-700/80">{product.description}</p>
@@ -130,7 +154,7 @@ export function ProductDetail({ product }: { product: Product }) {
             <div className="mt-2 flex items-center gap-4">
               <div className="flex items-center rounded-full border border-cream-200">
                 <button
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  onClick={() => setQuantity((q) => Math.max(minQty, q - 1))}
                   className="p-3 text-ink-800 hover:text-amber-600"
                   aria-label="Decrease quantity"
                 >
@@ -155,23 +179,8 @@ export function ProductDetail({ product }: { product: Product }) {
             className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-amber-500 py-4 font-semibold text-white transition-colors hover:bg-amber-600 sm:w-auto sm:px-10"
           >
             <ShoppingCart className="h-5 w-5" />
-            {justAdded ? "Added to Cart ✓" : `Add to Cart — ${formatPrice(product.price * quantity)}`}
+            {justAdded ? "Added to Cart ✓" : `Add to Cart — ${formatPrice(price * quantity)}`}
           </motion.button>
-
-          <AnimatePresence>
-            {justAdded && (
-              <motion.button
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2 }}
-                onClick={() => router.push("/cart")}
-                className="mt-3 block text-sm font-semibold text-ink-800 underline hover:text-amber-600"
-              >
-                View cart
-              </motion.button>
-            )}
-          </AnimatePresence>
 
           <div className="mt-6 flex flex-wrap gap-6 text-sm text-ink-700/80">
             <span className="flex items-center gap-2">

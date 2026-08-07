@@ -1,11 +1,11 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronUp, ShoppingBag } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PageLoading } from "@/components/PageLoading";
-import { useAdminData, type OrderStatus } from "@/lib/store";
-import { formatPrice } from "@/lib/utils";
+import { useAdminData, type Order, type OrderStatus, type WholesaleOrder } from "@/lib/store";
+import { formatPrice, cn } from "@/lib/utils";
 
 const STATUSES: OrderStatus[] = ["Pending", "Processing", "Delivered", "Cancelled"];
 
@@ -16,22 +16,113 @@ const STATUS_STYLES: Record<OrderStatus, string> = {
   Cancelled: "bg-red-500/10 text-red-700",
 };
 
+type Channel = "retail" | "wholesale";
+type ChannelFilter = "all" | Channel;
+
+// A shared shape the table renders from, so retail Orders and wholesaleOrders can share one
+// table instead of two near-duplicate ones — each row remembers which channel it came from so
+// status updates and detail fields route back to the right collection/fields.
+type OrderRow = {
+  id: string;
+  channel: Channel;
+  displayName: string;
+  phone: string;
+  email?: string;
+  address: string;
+  createdAt: string;
+  subtotal: number;
+  status: OrderStatus;
+  lines: Order["lines"];
+  serverValidated?: boolean;
+};
+
+function toRow(order: Order): OrderRow {
+  return {
+    id: order.id,
+    channel: "retail",
+    displayName: order.customerName,
+    phone: order.phone,
+    email: order.email,
+    address: order.address,
+    createdAt: order.createdAt,
+    subtotal: order.subtotal,
+    status: order.status,
+    lines: order.lines,
+    serverValidated: order.serverValidated,
+  };
+}
+
+function toWholesaleRow(order: WholesaleOrder): OrderRow {
+  return {
+    id: order.id,
+    channel: "wholesale",
+    displayName: `${order.businessName} · ${order.contactName}`,
+    phone: order.phone,
+    email: order.email,
+    address: order.deliveryAddress,
+    createdAt: order.createdAt,
+    subtotal: order.subtotal,
+    status: order.status,
+    lines: order.lines,
+    serverValidated: order.serverValidated,
+  };
+}
+
 export default function AdminOrdersPage() {
-  const { orders, loading, updateOrderStatus } = useAdminData();
+  const { orders, wholesaleOrders, loading, updateOrderStatus, updateWholesaleOrderStatus } =
+    useAdminData();
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [filter, setFilter] = useState<ChannelFilter>("all");
+
+  const rows = useMemo(() => {
+    const combined = [...orders.map(toRow), ...wholesaleOrders.map(toWholesaleRow)];
+    combined.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    return filter === "all" ? combined : combined.filter((r) => r.channel === filter);
+  }, [orders, wholesaleOrders, filter]);
+
+  // FIFO fulfilment queue: one combined retail+wholesale backlog of un-fulfilled orders,
+  // numbered oldest-first (#1 = work next). Filter-independent — the position is a global rank,
+  // so it stays stable when the table is filtered to one channel.
+  const queuePositions = useMemo(() => {
+    const unfulfilled = [...orders.map(toRow), ...wholesaleOrders.map(toWholesaleRow)]
+      .filter((r) => r.status === "Pending" || r.status === "Processing")
+      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+    return new Map(unfulfilled.map((r, i) => [r.id, i + 1]));
+  }, [orders, wholesaleOrders]);
 
   if (loading) {
     return <PageLoading />;
   }
 
+  const setStatus = (row: OrderRow, status: OrderStatus) =>
+    row.channel === "wholesale"
+      ? updateWholesaleOrderStatus(row.id, status)
+      : updateOrderStatus(row.id, status);
+
   return (
     <div>
       <AdminPageHeader
         title="Orders"
-        description={`${orders.length} order${orders.length === 1 ? "" : "s"}`}
+        description={`${rows.length} order${rows.length === 1 ? "" : "s"}`}
+        action={
+          <div className="flex gap-1 rounded-full border border-ink-900/8 bg-cream-50 p-1">
+            {(["all", "retail", "wholesale"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  "rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition-colors",
+                  filter === f ? "bg-amber-500 text-white" : "text-ink-700 hover:bg-ink-900/5"
+                )}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        }
       />
 
-      {orders.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-ink-900/15 bg-cream-50 p-10 text-center text-sm text-ink-700/60">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-ink-900/5 text-ink-700/40">
             <ShoppingBag className="h-6 w-6" strokeWidth={1.5} />
@@ -52,14 +143,32 @@ export default function AdminOrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-900/5">
-              {orders.map((order) => {
-                const isOpen = expanded === order.id;
+              {rows.map((row) => {
+                const isOpen = expanded === row.id;
                 return (
-                  <Fragment key={order.id}>
+                  <Fragment key={row.id}>
                     <tr>
                       <td className="px-5 py-3 font-semibold text-ink-900">
-                        {order.id}
-                        {order.serverValidated === false && (
+                        {queuePositions.has(row.id) && (
+                          <span
+                            title="Fulfilment queue position — #1 is the oldest un-fulfilled order (work next)."
+                            className="mr-2 inline-block rounded-full bg-ink-900/5 px-2 py-0.5 text-[10px] font-semibold text-ink-700 tabular-nums"
+                          >
+                            #{queuePositions.get(row.id)}
+                          </span>
+                        )}
+                        {row.id}
+                        <span
+                          className={cn(
+                            "ml-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize",
+                            row.channel === "wholesale"
+                              ? "bg-forest-600/10 text-forest-700"
+                              : "bg-amber-500/10 text-amber-700"
+                          )}
+                        >
+                          {row.channel}
+                        </span>
+                        {row.serverValidated === false && (
                           <span
                             title="Reconstructed from a Paystack webhook — verify never landed. Double-check before treating as final."
                             className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
@@ -70,20 +179,18 @@ export default function AdminOrdersPage() {
                         )}
                       </td>
                       <td className="px-5 py-3 text-ink-700/80">
-                        {order.customerName}
-                        <div className="text-xs text-ink-700/50">{order.phone}</div>
+                        {row.displayName}
+                        <div className="text-xs text-ink-700/50">{row.phone}</div>
                       </td>
                       <td className="px-5 py-3 text-ink-700/70">
-                        {new Date(order.createdAt).toLocaleDateString()}
+                        {new Date(row.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-5 py-3 text-ink-900">{formatPrice(order.subtotal)}</td>
+                      <td className="px-5 py-3 text-ink-900">{formatPrice(row.subtotal)}</td>
                       <td className="px-5 py-3">
                         <select
-                          value={order.status}
-                          onChange={(e) =>
-                            updateOrderStatus(order.id, e.target.value as OrderStatus)
-                          }
-                          className={`rounded-full border-0 px-2.5 py-1 text-xs font-semibold ${STATUS_STYLES[order.status]}`}
+                          value={row.status}
+                          onChange={(e) => setStatus(row, e.target.value as OrderStatus)}
+                          className={`rounded-full border-0 px-2.5 py-1 text-xs font-semibold ${STATUS_STYLES[row.status]}`}
                         >
                           {STATUSES.map((s) => (
                             <option key={s} value={s}>
@@ -94,7 +201,7 @@ export default function AdminOrdersPage() {
                       </td>
                       <td className="px-5 py-3 text-right">
                         <button
-                          onClick={() => setExpanded(isOpen ? null : order.id)}
+                          onClick={() => setExpanded(isOpen ? null : row.id)}
                           aria-label="Toggle details"
                           className="rounded-full p-2 text-ink-700 hover:bg-ink-900/5"
                         >
@@ -112,16 +219,16 @@ export default function AdminOrdersPage() {
                           <p className="text-xs font-semibold uppercase tracking-wide text-ink-700/50">
                             Delivery Address
                           </p>
-                          <p className="mt-1 text-sm text-ink-800">{order.address}</p>
-                          {order.email && (
-                            <p className="mt-1 text-sm text-ink-700/70">{order.email}</p>
+                          <p className="mt-1 text-sm text-ink-800">{row.address}</p>
+                          {row.email && (
+                            <p className="mt-1 text-sm text-ink-700/70">{row.email}</p>
                           )}
 
                           <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ink-700/50">
                             Items
                           </p>
                           <ul className="mt-2 space-y-1.5">
-                            {order.lines.map((line, i) => (
+                            {row.lines.map((line, i) => (
                               <li key={i} className="flex justify-between text-sm text-ink-800">
                                 <span>
                                   {line.name} ({line.color}, {line.size}) × {line.quantity}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Check, ImageOff } from "lucide-react";
+import { AlertTriangle, Check, X } from "lucide-react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { storage } from "@/lib/firebase";
@@ -109,43 +109,43 @@ function SaveButton({ saved }: { saved: boolean }) {
 
 function HeroForm({ hero, onSave }: { hero: HeroSettings; onSave: (hero: HeroSettings) => Promise<void> }) {
   const [values, setValues] = useState<HeroSettings>(hero);
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const set = <K extends keyof HeroSettings>(key: K, value: HeroSettings[K]) =>
     setValues((prev) => ({ ...prev, [key]: value }));
 
-  const handleImage = (file: File | undefined) => {
-    if (!file) return;
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = () => set("image", String(reader.result));
-    reader.readAsDataURL(file);
+  const addSlides = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setError(null);
+    setUploading(true);
+    try {
+      const urls: string[] = [];
+      for (const file of Array.from(files)) {
+        const path = `hero/${crypto.randomUUID()}-${file.name}`;
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, file);
+        urls.push(await getDownloadURL(storageRef));
+      }
+      setValues((prev) => ({ ...prev, slides: [...prev.slides, ...urls] }));
+    } catch {
+      setError("Couldn't upload one or more slides. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const handleRemoveImage = () => {
-    setImageFile(null);
-    set("image", "");
-  };
+  const removeSlide = (index: number) =>
+    setValues((prev) => ({ ...prev, slides: prev.slides.filter((_, i) => i !== index) }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSaving(true);
     try {
-      let image = values.image;
-      if (imageFile) {
-        const path = `hero/${crypto.randomUUID()}-${imageFile.name}`;
-        const storageRef = ref(storage, path);
-        await uploadBytes(storageRef, imageFile);
-        image = await getDownloadURL(storageRef);
-      }
-      const nextHero = { ...values, image };
-      await onSave(nextHero);
-      setValues(nextHero);
-      setImageFile(null);
+      await onSave(values);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {
@@ -158,43 +158,44 @@ function HeroForm({ hero, onSave }: { hero: HeroSettings; onSave: (hero: HeroSet
   return (
     <form onSubmit={handleSubmit} className="max-w-lg space-y-4">
       <p className="text-sm text-ink-700/70">
-        Controls the homepage hero — the first thing visitors see. Leave the photo empty to use
-        the illustrated fallback instead.
+        Controls the full-screen homepage hero. Add background slides — they crossfade behind the
+        headline. Leave them empty to use the branded gradient. The Shop Now and Track Your Order
+        buttons are fixed.
       </p>
 
       <div>
         <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-          Hero Photo
+          Hero Background Slides
         </label>
-        <div className="mt-2 flex items-center gap-4">
-          {values.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={values.image} alt="Preview" className="h-20 w-28 rounded-xl object-cover" />
-          ) : (
-            <div className="flex h-20 w-28 items-center justify-center rounded-xl bg-sand-200 text-ink-700/40">
-              <ImageOff className="h-6 w-6" />
-            </div>
-          )}
-          <div className="flex flex-col gap-2">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleImage(e.target.files?.[0])}
-              className="text-xs text-ink-700/70 file:mr-3 file:rounded-full file:border-0 file:bg-amber-500 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
-            />
-            {values.image && (
-              <button
-                type="button"
-                onClick={handleRemoveImage}
-                className="self-start text-xs font-semibold text-ink-700/60 underline hover:text-red-600"
-              >
-                Remove photo
-              </button>
-            )}
+        {values.slides.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {values.slides.map((src, i) => (
+              <div key={i} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt="" className="h-20 w-28 rounded-xl object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeSlide(i)}
+                  aria-label="Remove slide"
+                  className="absolute -right-2 -top-2 rounded-full bg-red-600 p-1 text-white shadow"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => addSlides(e.target.files)}
+          className="mt-3 block text-xs text-ink-700/70 file:mr-3 file:rounded-full file:border-0 file:bg-amber-500 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
+        />
+        {uploading && <p className="mt-1 text-xs text-ink-700/60">Uploading…</p>}
         <p className="mt-1 text-xs text-ink-700/50">
-          Uploads to Firebase Storage — falls back to the illustrated product collage when empty.
+          Full-bleed background photos. Multiple slides crossfade automatically. Empty = branded
+          gradient.
         </p>
       </div>
 
@@ -208,31 +209,6 @@ function HeroForm({ hero, onSave }: { hero: HeroSettings; onSave: (hero: HeroSet
         hint="Rendered in amber below the headline. Use a new line to wrap onto two lines."
       />
       <TextareaField label="Subtext" value={values.subtext} onChange={(v) => set("subtext", v)} />
-
-      <div className="grid grid-cols-2 gap-4">
-        <Field
-          label="Primary Button Label"
-          value={values.ctaPrimaryLabel}
-          onChange={(v) => set("ctaPrimaryLabel", v)}
-        />
-        <Field
-          label="Primary Button Link"
-          value={values.ctaPrimaryHref}
-          onChange={(v) => set("ctaPrimaryHref", v)}
-        />
-        <Field
-          label="Secondary Button Label"
-          value={values.ctaSecondaryLabel}
-          onChange={(v) => set("ctaSecondaryLabel", v)}
-        />
-        <Field
-          label="Secondary Button Link"
-          value={values.ctaSecondaryHref}
-          onChange={(v) => set("ctaSecondaryHref", v)}
-        />
-        <Field label="Stat Value" value={values.statValue} onChange={(v) => set("statValue", v)} />
-        <Field label="Stat Label" value={values.statLabel} onChange={(v) => set("statLabel", v)} />
-      </div>
 
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
@@ -468,6 +444,8 @@ export default function AdminSettingsPage() {
     storeEmail: settings.storeEmail,
     checkoutLocked: settings.checkoutLocked,
     checkoutLockMessage: settings.checkoutLockMessage,
+    wholesaleCheckoutLocked: settings.wholesaleCheckoutLocked,
+    wholesaleCheckoutLockMessage: settings.wholesaleCheckoutLockMessage,
   });
   const [notifications, setNotifications] = useState({
     smsProvider: settings.smsProvider,
@@ -551,6 +529,35 @@ export default function AdminSettingsPage() {
                     value={general.checkoutLockMessage}
                     onChange={(v) =>
                       setGeneral((s) => ({ ...s, checkoutLockMessage: v }))
+                    }
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-ink-900/8 pt-4">
+              <label className="flex items-center gap-2 text-sm font-semibold text-ink-900">
+                <input
+                  type="checkbox"
+                  checked={general.wholesaleCheckoutLocked}
+                  onChange={(e) =>
+                    setGeneral((s) => ({ ...s, wholesaleCheckoutLocked: e.target.checked }))
+                  }
+                  className="h-4 w-4 rounded border-ink-900/20 text-forest-600 focus:ring-forest-600/40"
+                />
+                Pause wholesale checkout
+              </label>
+              <p className="mt-1 text-xs text-ink-700/60">
+                Independent of the retail pause above — hides only the wholesale storefront&apos;s
+                Checkout button.
+              </p>
+              {general.wholesaleCheckoutLocked && (
+                <div className="mt-3">
+                  <Field
+                    label="Message shown to wholesale customers"
+                    value={general.wholesaleCheckoutLockMessage}
+                    onChange={(v) =>
+                      setGeneral((s) => ({ ...s, wholesaleCheckoutLockMessage: v }))
                     }
                   />
                 </div>

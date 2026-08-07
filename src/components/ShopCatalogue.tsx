@@ -5,39 +5,53 @@ import { PackageSearch, Search } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
 import type { Product } from "@/lib/products";
 import { useAdminData } from "@/lib/store";
-import { cn } from "@/lib/utils";
+import { cn, getDisplayPrice, type PriceMode } from "@/lib/utils";
 
 type SortKey = "featured" | "price-asc" | "price-desc" | "rating";
 
-const PRICE_RANGES = [
-  { key: "all", label: "All Prices", test: () => true },
-  { key: "under-60", label: "Under GH₵ 60", test: (p: Product) => p.price < 60 },
-  { key: "60-100", label: "GH₵ 60 – 100", test: (p: Product) => p.price >= 60 && p.price <= 100 },
-  { key: "100-plus", label: "GH₵ 100+", test: (p: Product) => p.price > 100 },
-];
+function priceRanges(mode: PriceMode) {
+  const price = (p: Product) => getDisplayPrice(p, mode);
+  return [
+    { key: "all", label: "All Prices", test: () => true },
+    { key: "under-60", label: "Under GH₵ 60", test: (p: Product) => price(p) < 60 },
+    { key: "60-100", label: "GH₵ 60 – 100", test: (p: Product) => price(p) >= 60 && price(p) <= 100 },
+    { key: "100-plus", label: "GH₵ 100+", test: (p: Product) => price(p) > 100 },
+  ];
+}
 
-export function ShopCatalogue({ initialCategory }: { initialCategory?: string }) {
+export function ShopCatalogue({
+  initialCategory,
+  mode = "retail",
+  onQuickAdd,
+}: {
+  initialCategory?: string;
+  mode?: PriceMode;
+  onQuickAdd?: (product: Product) => void;
+}) {
   const { products, categories } = useAdminData();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState(initialCategory ?? "all");
   const [priceRange, setPriceRange] = useState("all");
   const [sort, setSort] = useState<SortKey>("featured");
 
+  const PRICE_RANGES = useMemo(() => priceRanges(mode), [mode]);
+
   const filtered = useMemo(() => {
     const priceTest = PRICE_RANGES.find((r) => r.key === priceRange)?.test ?? (() => true);
     let list = products.filter((p) => {
+      if (mode === "wholesale" && p.wholesalePrice == null) return false;
       const matchesQuery = p.name.toLowerCase().includes(query.toLowerCase());
       const matchesCategory = category === "all" || p.category === category;
       return matchesQuery && matchesCategory && priceTest(p);
     });
 
     list = [...list];
-    if (sort === "price-asc") list.sort((a, b) => a.price - b.price);
-    if (sort === "price-desc") list.sort((a, b) => b.price - a.price);
+    if (sort === "price-asc") list.sort((a, b) => getDisplayPrice(a, mode) - getDisplayPrice(b, mode));
+    if (sort === "price-desc") list.sort((a, b) => getDisplayPrice(b, mode) - getDisplayPrice(a, mode));
     if (sort === "rating") list.sort((a, b) => b.rating - a.rating);
 
     return list;
-  }, [products, query, category, priceRange, sort]);
+  }, [products, query, category, priceRange, sort, mode, PRICE_RANGES]);
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-10">
@@ -135,7 +149,7 @@ export function ShopCatalogue({ initialCategory }: { initialCategory?: string })
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {filtered.map((product) => (
-                <ProductCard key={product.slug} product={product} />
+                <ProductCard key={product.slug} product={product} mode={mode} onQuickAdd={onQuickAdd} />
               ))}
             </div>
           )}

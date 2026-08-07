@@ -19,8 +19,14 @@ export type Product = {
   reviewCount: number;
   price: number;
   compareAtPrice?: number;
+  /** Bulk/business pricing for the wholesale storefront. Unset = not offered wholesale. */
+  wholesalePrice?: number;
+  wholesaleMinQty?: number;
   unit: string;
   stock: number;
+  /** Lifetime units sold, incremented server-side at order creation — powers best-sellers
+   *  without reducing over the whole orders collection. */
+  unitsSold?: number;
   description: string;
   colors: ColorVariant[];
   sizes: string[];

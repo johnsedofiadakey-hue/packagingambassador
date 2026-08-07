@@ -5,18 +5,15 @@ import { ArrowRight, Leaf, Truck, ShieldCheck, Users } from "lucide-react";
 import { ProductArt } from "@/components/ProductArt";
 import { ProductCard } from "@/components/ProductCard";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
-import { HeroCollage } from "@/components/HeroCollage";
-import { HeroLidReveal } from "@/components/HeroLidReveal";
-import { KineticHeadline } from "@/components/KineticHeadline";
-import { MagneticButton } from "@/components/MagneticButton";
+import { HeroSlider } from "@/components/HeroSlider";
 import { Newsletter } from "@/components/Newsletter";
 import { Wave } from "@/components/Wave";
 import { Reveal } from "@/components/Reveal";
 import { MotionLink } from "@/components/MotionLink";
-import { CountUp } from "@/components/CountUp";
-import { motion } from "framer-motion";
 import { useAdminData } from "@/lib/store";
+import { useCart } from "@/lib/cart-context";
 import { getTopSellers } from "@/lib/top-sellers";
+import { defaultVariant } from "@/lib/utils";
 
 const BRAND_ACCENTS = [
   "bg-amber-500/15 text-amber-600",
@@ -52,113 +49,51 @@ const FEATURES = [
 ];
 
 export default function Home() {
-  const { products, categories, orders, settings } = useAdminData();
-  const bestSellers = getTopSellers(products, orders, 4);
+  const { products, categories, settings } = useAdminData();
+  const { addToCart } = useCart();
+  const bestSellers = getTopSellers(products, 4);
   const hero = settings.hero;
 
   return (
     <div>
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-sand-300 via-sand-200 to-sand-100">
-        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="animate-drift-a absolute -left-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-amber-400/25 blur-3xl" />
-          <div className="animate-drift-b absolute -right-24 top-10 h-[24rem] w-[24rem] rounded-full bg-forest-500/15 blur-3xl" />
-          <div className="animate-drift-c absolute bottom-0 left-1/3 h-[22rem] w-[22rem] rounded-full bg-sunset-500/15 blur-3xl" />
-        </div>
+      {/* Full-screen takeover hero */}
+      <section className="relative flex min-h-[100svh] items-center overflow-hidden text-white">
+        <HeroSlider slides={hero.slides} />
 
-        <div className="relative mx-auto grid max-w-7xl gap-10 px-6 pb-20 pt-20 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-28">
-          <div className="relative">
-            <motion.span
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-ink-900"
-            >
-              <Leaf className="h-4 w-4 text-amber-600" />
+        <div className="relative mx-auto w-full max-w-7xl px-6 pb-28 pt-32">
+          <div className="max-w-2xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur-sm">
+              <Leaf className="h-4 w-4 text-amber-300" />
               {hero.badgeText}
-            </motion.span>
+            </span>
 
-            <h1 className="mt-6 font-display text-5xl font-extrabold leading-[1.05] text-ink-900 sm:text-6xl">
-              <KineticHeadline
-                startDelay={0.1}
-                segments={[
-                  { text: hero.headline },
-                  ...hero.headlineAccent
-                    .split("\n")
-                    .map((line) => ({ text: line, className: "block text-amber-600" })),
-                ]}
-              />
+            <h1 className="mt-6 font-display text-5xl font-extrabold leading-[1.04] text-balance sm:text-6xl lg:text-7xl">
+              {hero.headline}{" "}
+              {hero.headlineAccent.split("\n").map((line, i) => (
+                <span key={i} className="block text-amber-300">
+                  {line}
+                </span>
+              ))}
             </h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-              className="mt-6 max-w-md text-lg text-ink-700/80"
-            >
-              {hero.subtext}
-            </motion.p>
+            <p className="mt-6 max-w-lg text-lg text-white/85">{hero.subtext}</p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.65 }}
-              className="mt-8 flex flex-wrap items-center gap-4"
-            >
-              <MagneticButton
-                href={hero.ctaPrimaryHref}
-                className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
+            <div className="mt-9 flex flex-wrap items-center gap-4">
+              <Link
+                href="/shop"
+                className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-7 py-3.5 font-semibold text-white shadow-lg shadow-ink-950/20 transition-colors hover:bg-amber-600"
               >
-                {hero.ctaPrimaryLabel}
+                Shop Now
                 <ArrowRight className="h-4 w-4" />
-              </MagneticButton>
-              <MagneticButton
-                href={hero.ctaSecondaryHref}
-                className="inline-flex items-center gap-2 rounded-full border border-forest-700 px-6 py-3 font-semibold text-forest-700 transition-colors hover:bg-forest-700/5"
+              </Link>
+              <Link
+                href="/track"
+                className="inline-flex items-center gap-2 rounded-full border border-white/40 px-7 py-3.5 font-semibold text-white transition-colors hover:bg-white/10"
               >
-                {hero.ctaSecondaryLabel}
-              </MagneticButton>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-              className="mt-10"
-            >
-              <p className="font-display text-3xl font-extrabold text-amber-600">
-                <CountUp value={hero.statValue} />
-              </p>
-              <p className="text-sm text-ink-700/70">{hero.statLabel}</p>
-            </motion.div>
-          </div>
-
-          {hero.image ? (
-            <div className="relative mx-auto aspect-4/5 w-full max-w-md">
-              <div className="h-full w-full overflow-hidden rounded-3xl shadow-xl shadow-ink-900/15">
-                <motion.img
-                  src={hero.image}
-                  alt=""
-                  initial={{ opacity: 0, scale: 0.92 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.6, delay: 0.55, ease: [0.16, 1, 0.3, 1] }}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.4, rotate: -12 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                transition={{ duration: 0.5, delay: 1.05, type: "spring", stiffness: 200, damping: 12 }}
-                className="glass-amber absolute -right-3 -top-3 z-10 flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg"
-              >
-                <Leaf className="h-4 w-4" />
-                Eco Certified
-              </motion.div>
-              <HeroLidReveal />
+                Track Your Order
+              </Link>
             </div>
-          ) : (
-            <HeroCollage />
-          )}
+          </div>
         </div>
 
         <Wave fillClassName="fill-background" />
@@ -237,7 +172,7 @@ export default function Home() {
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {bestSellers.map((product, index) => (
               <Reveal key={product.slug} delay={index * 0.06}>
-                <ProductCard product={product} />
+                <ProductCard product={product} onQuickAdd={(p) => addToCart(p, defaultVariant(p))} />
               </Reveal>
             ))}
           </div>

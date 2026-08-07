@@ -4,6 +4,7 @@ import { PromoBar } from "@/components/PromoBar";
 import { GrainOverlay } from "@/components/GrainOverlay";
 import { SmoothScroll } from "@/components/SmoothScroll";
 import { MobileTabBar } from "@/components/MobileTabBar";
+import { CartDrawer } from "@/components/CartDrawer";
 import { CartProvider } from "@/lib/cart-context";
 
 export default function SiteLayout({
@@ -20,6 +21,7 @@ export default function SiteLayout({
       <main className="flex-1 pb-20 md:pb-0">{children}</main>
       <Footer />
       <MobileTabBar />
+      <CartDrawer />
     </CartProvider>
   );
 }

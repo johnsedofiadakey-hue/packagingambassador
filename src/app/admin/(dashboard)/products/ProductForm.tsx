@@ -14,6 +14,8 @@ type FormValues = {
   badge: (typeof BADGES)[number];
   price: string;
   compareAtPrice: string;
+  wholesalePrice: string;
+  wholesaleMinQty: string;
   unit: string;
   stock: string;
   rating: string;
@@ -32,6 +34,8 @@ function toFormValues(product?: Product, defaultCategory?: string): FormValues {
     badge: (product?.badge as FormValues["badge"]) ?? "",
     price: product ? String(product.price) : "",
     compareAtPrice: product?.compareAtPrice ? String(product.compareAtPrice) : "",
+    wholesalePrice: product?.wholesalePrice ? String(product.wholesalePrice) : "",
+    wholesaleMinQty: product?.wholesaleMinQty ? String(product.wholesaleMinQty) : "",
     unit: product?.unit ?? "",
     stock: product ? String(product.stock) : "",
     rating: product ? String(product.rating) : "5",
@@ -110,6 +114,8 @@ export function ProductForm({
         badge: values.badge || undefined,
         price: Number(values.price) || 0,
         compareAtPrice: Number(values.compareAtPrice) || 0,
+        wholesalePrice: Number(values.wholesalePrice) || undefined,
+        wholesaleMinQty: Number(values.wholesaleMinQty) || undefined,
         unit: values.unit.trim() || "unit",
         stock: Number(values.stock) || 0,
         rating: Number(values.rating) || 0,
@@ -255,6 +261,37 @@ export function ProductForm({
                 value={values.compareAtPrice}
                 onChange={(e) => set("compareAtPrice", e.target.value)}
                 className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
+                Wholesale Price (GH₵)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Blank — not sold wholesale"
+                value={values.wholesalePrice}
+                onChange={(e) => set("wholesalePrice", e.target.value)}
+                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-forest-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest-600/40"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
+                Wholesale Min. Order Qty
+              </label>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Optional — defaults to 1"
+                value={values.wholesaleMinQty}
+                onChange={(e) => set("wholesaleMinQty", e.target.value)}
+                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-forest-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest-600/40"
               />
             </div>
           </div>

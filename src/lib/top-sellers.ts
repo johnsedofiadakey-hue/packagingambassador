@@ -1,18 +1,12 @@
 import type { Product } from "@/lib/products";
-import type { Order } from "@/lib/store";
 
-export function getTopSellers(products: Product[], orders: Order[], count = 4): Product[] {
-  const soldQuantity = new Map<string, number>();
-  for (const order of orders) {
-    if (order.status === "Cancelled") continue;
-    for (const line of order.lines) {
-      soldQuantity.set(line.slug, (soldQuantity.get(line.slug) ?? 0) + line.quantity);
-    }
-  }
-
+// Ranks by the per-product `unitsSold` counter (incremented server-side at order creation),
+// so best-sellers no longer depends on reducing over the whole orders collection. Falls back
+// to curated "Best Seller" badges, then the first N, when there's no sales data yet.
+export function getTopSellers(products: Product[], count = 4): Product[] {
   const ranked = products
-    .filter((p) => soldQuantity.has(p.slug))
-    .sort((a, b) => (soldQuantity.get(b.slug) ?? 0) - (soldQuantity.get(a.slug) ?? 0))
+    .filter((p) => (p.unitsSold ?? 0) > 0)
+    .sort((a, b) => (b.unitsSold ?? 0) - (a.unitsSold ?? 0))
     .slice(0, count);
 
   if (ranked.length > 0) return ranked;

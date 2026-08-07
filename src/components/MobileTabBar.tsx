@@ -9,7 +9,7 @@ import { useCart } from "@/lib/cart-context";
 const TABS = [
   { href: "/", label: "Home", icon: Home },
   { href: "/shop", label: "Shop", icon: Store },
-  { href: "/cart", label: "Cart", icon: ShoppingCart },
+  { href: "cart", label: "Cart", icon: ShoppingCart, isCart: true },
   { href: "/track", label: "Track", icon: PackageSearch },
 ] as const;
 
@@ -20,7 +20,7 @@ function isActive(pathname: string, href: string) {
 
 export function MobileTabBar() {
   const pathname = usePathname();
-  const { itemCount } = useCart();
+  const { itemCount, openCart } = useCart();
 
   return (
     <nav
@@ -28,14 +28,12 @@ export function MobileTabBar() {
       className="fixed inset-x-0 bottom-0 z-50 flex items-stretch justify-around border-t border-ink-900/8 bg-sand-50/95 px-2 pt-1.5 shadow-[0_-4px_24px_rgba(36,31,22,0.08)] backdrop-blur-xl md:hidden"
       style={{ paddingBottom: "max(0.375rem, env(safe-area-inset-bottom))" }}
     >
-      {TABS.map(({ href, label, icon: Icon }) => {
-        const active = isActive(pathname, href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            className="relative flex flex-1 flex-col items-center gap-0.5 py-1.5"
-          >
+      {TABS.map((tab) => {
+        const { label, icon: Icon } = tab;
+        const isCart = "isCart" in tab && tab.isCart;
+        const active = !isCart && isActive(pathname, tab.href);
+        const inner = (
+          <>
             {active && (
               <motion.span
                 layoutId="mobileTabIndicator"
@@ -54,7 +52,7 @@ export function MobileTabBar() {
                   }`}
                   strokeWidth={active ? 2.4 : 2}
                 />
-                {href === "/cart" && itemCount > 0 && (
+                {isCart && itemCount > 0 && (
                   <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-none text-white">
                     {itemCount > 9 ? "9+" : itemCount}
                   </span>
@@ -68,6 +66,16 @@ export function MobileTabBar() {
                 {label}
               </span>
             </motion.span>
+          </>
+        );
+        const className = "relative flex flex-1 flex-col items-center gap-0.5 py-1.5";
+        return isCart ? (
+          <button key="cart" type="button" onClick={openCart} aria-label="Open cart" className={className}>
+            {inner}
+          </button>
+        ) : (
+          <Link key={tab.href} href={tab.href} className={className}>
+            {inner}
           </Link>
         );
       })}

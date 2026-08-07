@@ -6,10 +6,13 @@ import { PageHero } from "@/components/PageHero";
 import { ShopCatalogue } from "@/components/ShopCatalogue";
 import { PageLoading } from "@/components/PageLoading";
 import { useAdminData } from "@/lib/store";
+import { useCart } from "@/lib/cart-context";
+import { defaultVariant } from "@/lib/utils";
 
 export default function CategoryPage() {
   const { slug } = useParams<{ slug: string }>();
   const { categories, loading } = useAdminData();
+  const { addToCart } = useCart();
   const category = categories.find((c) => c.slug === slug);
 
   if (loading) {
@@ -36,7 +39,10 @@ export default function CategoryPage() {
   return (
     <div>
       <PageHero eyebrow="Category" title={category.name} />
-      <ShopCatalogue initialCategory={category.slug} />
+      <ShopCatalogue
+        initialCategory={category.slug}
+        onQuickAdd={(p) => addToCart(p, defaultVariant(p))}
+      />
     </div>
   );
 }

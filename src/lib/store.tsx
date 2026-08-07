@@ -46,6 +46,41 @@ export type Order = {
   orderedWhileLocked?: boolean;
 };
 
+// Same OrderStatus vocabulary as retail — a second enum here is exactly the kind of drift
+// that quietly breaks a badge or a filter later (see the Lollarod review's status-vocabulary
+// note). Same reasoning for reusing CartLine: its `price` field is just "price at add-time,"
+// which works unchanged whether that price came from `product.price` or `product.wholesalePrice`.
+export type WholesaleOrder = {
+  id: string;
+  createdAt: string;
+  businessName: string;
+  contactName: string;
+  phone: string;
+  email?: string;
+  deliveryAddress: string;
+  lines: CartLine[];
+  subtotal: number;
+  status: OrderStatus;
+  paystackReference?: string;
+  paidAt?: string;
+  serverValidated?: boolean;
+  webhookReconstructed?: boolean;
+  orderedWhileLocked?: boolean;
+};
+
+export type BusinessCustomer = {
+  id: string; // keyed by phone
+  businessName: string;
+  contactName: string;
+  phone: string;
+  email?: string;
+  deliveryAddress: string;
+  orderCount: number;
+  totalSpent: number;
+  firstOrderAt: string;
+  lastOrderAt: string;
+};
+
 export type StaffRole = "Admin" | "Sales Staff" | "Inventory Staff";
 
 export type StaffMember = {
@@ -69,6 +104,8 @@ export type HeroSettings = {
   statValue: string;
   statLabel: string;
   image: string;
+  /** Full-bleed hero background slideshow — empty falls back to the branded gradient. */
+  slides: string[];
 };
 
 export type PromotionSettings = {
@@ -116,6 +153,9 @@ export type StoreSettings = {
   storeEmail: string;
   checkoutLocked: boolean;
   checkoutLockMessage: string;
+  /** Independent of checkoutLocked — an admin may want to pause one channel, not both. */
+  wholesaleCheckoutLocked: boolean;
+  wholesaleCheckoutLockMessage: string;
   smsProvider: string;
   smsSenderId: string;
   emailProvider: string;
@@ -134,11 +174,12 @@ const DEFAULT_HERO: HeroSettings = {
     "Premium kraft cups, boxes, bags, and containers — made from quality materials, delivered fast across Ghana.",
   ctaPrimaryLabel: "Shop Now",
   ctaPrimaryHref: "/shop",
-  ctaSecondaryLabel: "Our Story",
-  ctaSecondaryHref: "/about",
+  ctaSecondaryLabel: "Track Your Order",
+  ctaSecondaryHref: "/track",
   statValue: "2,000+",
   statLabel: "Customers served",
   image: "",
+  slides: [],
 };
 
 const DEFAULT_PROMOTION: PromotionSettings = {
@@ -194,6 +235,9 @@ const DEFAULT_SETTINGS: StoreSettings = {
   checkoutLocked: false,
   checkoutLockMessage:
     "We're temporarily not accepting new orders — please check back soon, or contact us directly.",
+  wholesaleCheckoutLocked: false,
+  wholesaleCheckoutLockMessage:
+    "Wholesale ordering is temporarily paused — please check back soon, or contact us directly.",
   smsProvider: "Arkesel",
   smsSenderId: "PackAmb",
   emailProvider: "Brevo",
@@ -220,6 +264,8 @@ type AdminDataContextValue = {
   products: Product[];
   categories: Category[];
   orders: Order[];
+  wholesaleOrders: WholesaleOrder[];
+  businessCustomers: BusinessCustomer[];
   staff: StaffMember[];
   posts: BlogPost[];
   settings: StoreSettings;
@@ -236,6 +282,7 @@ type AdminDataContextValue = {
 
   addOrder: (input: Omit<Order, "id" | "createdAt" | "status">) => Promise<Order>;
   updateOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
+  updateWholesaleOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
 
   addStaff: (input: {
     name: string;
@@ -260,6 +307,8 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [wholesaleOrders, setWholesaleOrders] = useState<WholesaleOrder[]>([]);
+  const [businessCustomers, setBusinessCustomers] = useState<BusinessCustomer[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [settings, setSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
@@ -302,6 +351,21 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       },
       () => {}
     );
+    // Same staff-only-read, silent-fail-for-anon shape as orders/staff above.
+    const unsubWholesaleOrders = onSnapshot(
+      query(collection(db, "wholesaleOrders"), orderBy("createdAt", "desc")),
+      (snap) => {
+        setWholesaleOrders(snap.docs.map((d) => ({ ...(d.data() as WholesaleOrder), id: d.id })));
+      },
+      () => {}
+    );
+    const unsubBusinessCustomers = onSnapshot(
+      collection(db, "businessCustomers"),
+      (snap) => {
+        setBusinessCustomers(snap.docs.map((d) => ({ ...(d.data() as BusinessCustomer), id: d.id })));
+      },
+      () => {}
+    );
     const unsubPosts = onSnapshot(
       query(collection(db, "posts"), orderBy("date", "desc")),
       (snap) => {
@@ -310,7 +374,18 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
     );
     const unsubSettings = onSnapshot(doc(db, "settings", "store"), (snap) => {
       if (snap.exists()) {
-        setSettings({ ...DEFAULT_SETTINGS, ...(snap.data() as Partial<StoreSettings>) });
+        const stored = snap.data() as Partial<StoreSettings>;
+        // Deep-merge the nested objects with their defaults — a shallow spread would let a
+        // stored `hero`/`promotion`/etc. that predates a newly-added field drop that field
+        // entirely (e.g. hero.slides came in later, and older docs don't have it).
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          ...stored,
+          hero: { ...DEFAULT_HERO, ...(stored.hero ?? {}) },
+          promotion: { ...DEFAULT_PROMOTION, ...(stored.promotion ?? {}) },
+          theme: { ...DEFAULT_THEME, ...(stored.theme ?? {}) },
+          pageContent: { ...DEFAULT_PAGE_CONTENT, ...(stored.pageContent ?? {}) },
+        });
       }
       setReadyFlags((f) => ({ ...f, settings: true }));
     });
@@ -320,6 +395,8 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       unsubCategories();
       unsubOrders();
       unsubStaff();
+      unsubWholesaleOrders();
+      unsubBusinessCustomers();
       unsubPosts();
       unsubSettings();
     };
@@ -383,6 +460,16 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
 
   const updateCategory = async (slug: string, patch: Partial<Category>) => {
     await updateDoc(doc(db, "categories", slug), patch);
+    // Products carry a denormalized `categoryLabel` for display — cascade a rename so their
+    // cards/breadcrumbs don't keep showing the old name until each is re-saved.
+    const current = categories.find((c) => c.slug === slug);
+    if (patch.name && patch.name !== current?.name) {
+      const affected = products.filter((p) => p.category === slug);
+      await Promise.all(
+        affected.map((p) => updateDoc(doc(db, "products", p.slug), { categoryLabel: patch.name }))
+      );
+      logActivity("category_renamed", { slug, name: patch.name, productsRelabelled: affected.length });
+    }
   };
 
   const removeCategory = async (slug: string) => {
@@ -410,6 +497,11 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
   const updateOrderStatus = async (id: string, status: OrderStatus) => {
     await updateDoc(doc(db, "orders", id), { status });
     logActivity("order_status_changed", { orderId: id, status });
+  };
+
+  const updateWholesaleOrderStatus = async (id: string, status: OrderStatus) => {
+    await updateDoc(doc(db, "wholesaleOrders", id), { status });
+    logActivity("wholesale_order_status_changed", { orderId: id, status });
   };
 
   const addStaff = async (input: {
@@ -481,6 +573,8 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       products,
       categories,
       orders,
+      wholesaleOrders,
+      businessCustomers,
       staff,
       posts,
       settings,
@@ -494,6 +588,7 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       reorderCategories,
       addOrder,
       updateOrderStatus,
+      updateWholesaleOrderStatus,
       addStaff,
       updateStaff,
       removeStaff,
@@ -503,7 +598,7 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       updateSettings,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [products, categories, orders, staff, posts, settings, loading]
+    [products, categories, orders, wholesaleOrders, businessCustomers, staff, posts, settings, loading]
   );
 
   return <AdminDataContext.Provider value={value}>{children}</AdminDataContext.Provider>;
