@@ -20,6 +20,7 @@ import {
   Monitor,
   Receipt,
   Boxes,
+  ShieldCheck,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { auth } from "@/lib/firebase";
@@ -31,6 +32,7 @@ const NAV = [
   { href: "/admin/pos", label: "Point of Sale", icon: Monitor, adminOnly: false },
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag, adminOnly: false },
   { href: "/admin/sales", label: "Sales Records", icon: Receipt, adminOnly: false },
+  { href: "/admin/reconciliation", label: "Reconciliation", icon: ShieldCheck, adminOnly: true },
   { href: "/admin/products", label: "Products", icon: Package, adminOnly: false },
   { href: "/admin/inventory", label: "Inventory", icon: Boxes, adminOnly: false },
   { href: "/admin/categories", label: "Categories", icon: FolderTree, adminOnly: false },

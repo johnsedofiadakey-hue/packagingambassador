@@ -1,12 +1,56 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DollarSign, ShoppingBag, TrendingUp, Wallet } from "lucide-react";
+import { DollarSign, ShoppingBag, TrendingUp, Wallet, Mail } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PageLoading } from "@/components/PageLoading";
 import { useAdminData } from "@/lib/store";
 import { loadAnalytics, type AnalyticsData } from "@/lib/analytics-queries";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, cn } from "@/lib/utils";
+import { auth } from "@/lib/firebase";
+
+function WeeklySummaryButton() {
+  const [sending, setSending] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const send = async () => {
+    setSending(true);
+    setMsg(null);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch("/api/admin/weekly-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      const data = await res.json();
+      if (res.ok && data.sent) {
+        setMsg({ ok: true, text: "Weekly summary emailed to your store email." });
+      } else {
+        setMsg({ ok: false, text: data.reason ?? data.error ?? "Couldn't send the summary." });
+      }
+    } catch {
+      setMsg({ ok: false, text: "Couldn't send the summary. Please try again." });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <button
+        onClick={send}
+        disabled={sending}
+        className="inline-flex items-center gap-2 rounded-full border border-ink-900/10 bg-cream-50 px-4 py-2 text-sm font-semibold text-ink-800 hover:bg-ink-900/5 disabled:opacity-60"
+      >
+        <Mail className="h-4 w-4" />
+        {sending ? "Sending…" : "Email weekly summary now"}
+      </button>
+      {msg && (
+        <span className={cn("text-sm font-medium", msg.ok ? "text-forest-700" : "text-red-600")}>{msg.text}</span>
+      )}
+    </div>
+  );
+}
 
 const RETAIL = "var(--color-amber-500)";
 const WHOLESALE = "var(--color-forest-500)";
@@ -131,6 +175,10 @@ export default function AdminAnalyticsPage() {
         title="Analytics"
         description="Revenue and order performance across both channels."
       />
+
+      <div className="mb-6">
+        <WeeklySummaryButton />
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Revenue" value={formatPrice(data.revenue.total)} icon={DollarSign} />
