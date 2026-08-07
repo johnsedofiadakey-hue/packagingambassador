@@ -2,10 +2,8 @@ import { WholesaleHeader } from "@/components/WholesaleHeader";
 import { Footer } from "@/components/Footer";
 import { WholesaleCartDrawer } from "@/components/CartDrawer";
 import { WholesaleCartProvider } from "@/lib/wholesale-cart-context";
+import { MobileTabBar } from "@/components/MobileTabBar";
 
-// Deliberately a fresh top-level route, not nested inside (site) — it needs its own cart
-// provider and header, the same reasoning the codebase already applies to `admin`. Footer has
-// no cart dependency, so it's reused as-is; retail's CartProvider/Header never mount here.
 export default function WholesaleLayout({
   children,
 }: Readonly<{
@@ -14,8 +12,9 @@ export default function WholesaleLayout({
   return (
     <WholesaleCartProvider>
       <WholesaleHeader />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 pb-24 md:pb-0">{children}</main>
       <Footer />
+      <MobileTabBar />
       <WholesaleCartDrawer />
     </WholesaleCartProvider>
   );
