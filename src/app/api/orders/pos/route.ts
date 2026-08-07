@@ -55,13 +55,14 @@ export async function POST(request: Request) {
       });
     }
 
-    // 3. Bump revenue stats
-    const date = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-    const statsRef = db.collection("revenueStats").doc(date);
-    batch.set(statsRef, {
-      revenue: FieldValue.increment(subtotal),
-      ordersCount: FieldValue.increment(1)
-    }, { merge: true });
+    // 3. Bump revenue stats — must match the monthly, per-channel rollup the
+    //    analytics dashboard reads (revenueStats/{YYYY-MM} with {retail|wholesale}
+    //    fields). Writing a daily doc or differently-named fields makes POS revenue
+    //    invisible to the BI dashboard.
+    const monthKey = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const channelKey = channel === "wholesale" ? "wholesale" : "retail";
+    const statsRef = db.collection("revenueStats").doc(monthKey);
+    batch.set(statsRef, { [channelKey]: FieldValue.increment(subtotal) }, { merge: true });
 
     await batch.commit();
 
