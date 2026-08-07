@@ -129,6 +129,28 @@ body {
   }
 }
 
+/* Moving gradient sheen — used for the footer's top accent line so the brand
+   colours slide across it continuously. */
+@keyframes gradient-pan {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.animate-gradient-pan {
+  background-size: 200% 100%;
+  animation: gradient-pan 6s linear infinite;
+}
+
+/* Very gentle lift so the floating footer card feels alive without distracting. */
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-float-soft { animation: float-soft 7s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-gradient-pan, .animate-float-soft { animation: none; }
+}
+
 /* Reusable glassmorphism surfaces — real transparency + a diagonal "sheen"
    highlight (like light catching curved glass) + an inset top-edge glow,
    not just a flat blurred-white box. Use alongside Tailwind utilities for
