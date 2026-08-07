@@ -73,6 +73,33 @@ function TrackPageInner() {
     runTrack(orderId);
   };
 
+  // Live updates: once an order is shown, silently re-poll its status so a staff
+  // update in the admin console reflects here without the customer refreshing.
+  // Stops at a terminal status and pauses while the tab is hidden — both keep this
+  // well under the /track rate limit. A transient poll failure keeps the last
+  // known state on screen rather than wiping it.
+  const isTerminal = order?.status === "Delivered" || order?.status === "Cancelled";
+  useEffect(() => {
+    if (!order || isTerminal) return;
+    const id = order.id;
+    const interval = setInterval(async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch("/api/orders/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: id }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setOrder((prev) => (prev && prev.id === data.id ? data : prev));
+      } catch {
+        /* keep the last good state on a transient poll error */
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [order, isTerminal]);
+
   return (
     <div>
       <PageHero eyebrow="Order Tracking" title="Track Your Order" />
@@ -118,6 +145,16 @@ function TrackPageInner() {
             <div className="mt-6">
               <OrderStatusStepper status={order.status} />
             </div>
+
+            {!isTerminal && (
+              <p className="mt-3 flex items-center gap-2 text-xs font-medium text-ink-700/60">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forest-500/70" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-forest-600" />
+                </span>
+                Updating live
+              </p>
+            )}
 
             <ul className="mt-6 divide-y divide-cream-200 border-t border-cream-200">
               {order.lines.map((line, i) => (

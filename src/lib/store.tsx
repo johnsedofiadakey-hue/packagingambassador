@@ -119,6 +119,15 @@ export type PromotionSettings = {
   ctaHref: string;
 };
 
+export type SaleSettings = {
+  enabled: boolean;
+  headline: string;
+  /** ISO datetime the sale ends — drives the countdown. Empty = banner with no timer. */
+  endsAt: string;
+  ctaLabel: string;
+  ctaHref: string;
+};
+
 export type ThemeSettings = {
   primaryColor: string;
   secondaryColor: string;
@@ -160,6 +169,9 @@ export type StoreSettings = {
   /** Independent of checkoutLocked — an admin may want to pause one channel, not both. */
   wholesaleCheckoutLocked: boolean;
   wholesaleCheckoutLockMessage: string;
+  /** Hard site-wide gate: closes the entire storefront (not just checkout). Staff bypass it. */
+  siteLocked: boolean;
+  siteLockMessage: string;
   wholesaleMOQ: number;
   lowStockThreshold: number;
   storeAddress: string;
@@ -169,6 +181,7 @@ export type StoreSettings = {
   emailFromAddress: string;
   hero: HeroSettings;
   promotion: PromotionSettings;
+  sale: SaleSettings;
   theme: ThemeSettings;
   pageContent: PageContentSettings;
 };
@@ -193,6 +206,14 @@ const DEFAULT_PROMOTION: PromotionSettings = {
   enabled: false,
   text: "Limited time: save on bulk orders — ask us about wholesale pricing.",
   ctaLabel: "Shop Now",
+  ctaHref: "/shop",
+};
+
+const DEFAULT_SALE: SaleSettings = {
+  enabled: false,
+  headline: "Flash Sale — limited-time prices across the store",
+  endsAt: "",
+  ctaLabel: "Shop the Sale",
   ctaHref: "/shop",
 };
 
@@ -245,6 +266,8 @@ const DEFAULT_SETTINGS: StoreSettings = {
   wholesaleCheckoutLocked: false,
   wholesaleCheckoutLockMessage:
     "Wholesale ordering is temporarily paused — please check back soon, or contact us directly.",
+  siteLocked: false,
+  siteLockMessage: "We'll be right back — the store is briefly closed for maintenance.",
   wholesaleMOQ: 10,
   lowStockThreshold: 20,
   storeAddress: "Accra, Ghana",
@@ -254,6 +277,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   emailFromAddress: "orders@packagingambassadors.com",
   hero: DEFAULT_HERO,
   promotion: DEFAULT_PROMOTION,
+  sale: DEFAULT_SALE,
   theme: DEFAULT_THEME,
   pageContent: DEFAULT_PAGE_CONTENT,
 };
@@ -393,6 +417,7 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
           ...stored,
           hero: { ...DEFAULT_HERO, ...(stored.hero ?? {}) },
           promotion: { ...DEFAULT_PROMOTION, ...(stored.promotion ?? {}) },
+          sale: { ...DEFAULT_SALE, ...(stored.sale ?? {}) },
           theme: { ...DEFAULT_THEME, ...(stored.theme ?? {}) },
           pageContent: { ...DEFAULT_PAGE_CONTENT, ...(stored.pageContent ?? {}) },
         });

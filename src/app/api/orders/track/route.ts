@@ -3,7 +3,11 @@ import { getAdminDb } from "@/lib/firebase-admin";
 import { rateLimit } from "@/lib/rate-limit";
 
 const GENERIC_ERROR = "We couldn't find an order with that number — check it and try again.";
-const RATE_LIMIT = 12;
+// The tracking page now polls this endpoint every 30s for live status updates, so
+// the per-IP budget has to accommodate ~30 legit calls per window on top of manual
+// lookups. 40/15min still throttles ID-enumeration to an impractical crawl against
+// the 8-char (~2.8 trillion) order-ID space.
+const RATE_LIMIT = 40;
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(request: Request) {

@@ -22,6 +22,7 @@ const TABS = [
   "Page Content",
   "Colors & Branding",
   "Promotion",
+  "Sale",
   "Payment",
   "Notifications",
   "Account",
@@ -447,6 +448,8 @@ export default function AdminSettingsPage() {
     checkoutLockMessage: settings.checkoutLockMessage,
     wholesaleCheckoutLocked: settings.wholesaleCheckoutLocked,
     wholesaleCheckoutLockMessage: settings.wholesaleCheckoutLockMessage,
+    siteLocked: settings.siteLocked,
+    siteLockMessage: settings.siteLockMessage,
     wholesaleMOQ: settings.wholesaleMOQ,
     lowStockThreshold: settings.lowStockThreshold,
   });
@@ -457,6 +460,7 @@ export default function AdminSettingsPage() {
     emailFromAddress: settings.emailFromAddress,
   });
   const [promotion, setPromotion] = useState(settings.promotion);
+  const [sale, setSale] = useState(settings.sale);
 
   const flashSaved = () => {
     setSaved(true);
@@ -569,6 +573,34 @@ export default function AdminSettingsPage() {
             </div>
 
             <div className="border-t border-ink-900/8 pt-4">
+              <label className="flex items-center gap-2 text-sm font-semibold text-ink-900">
+                <input
+                  type="checkbox"
+                  checked={general.siteLocked}
+                  onChange={(e) =>
+                    setGeneral((s) => ({ ...s, siteLocked: e.target.checked }))
+                  }
+                  className="h-4 w-4 rounded border-ink-900/20 text-clay-700 focus:ring-clay-700/40"
+                />
+                Close the entire storefront
+              </label>
+              <p className="mt-1 text-xs text-ink-700/60">
+                A hard sitewide lockdown — replaces every public page with the message below
+                (maintenance, off-hours, a sold-out event). Stronger than pausing checkout. Signed-in
+                staff bypass it, so you can still work and preview the live site.
+              </p>
+              {general.siteLocked && (
+                <div className="mt-3">
+                  <Field
+                    label="Message shown to visitors"
+                    value={general.siteLockMessage}
+                    onChange={(v) => setGeneral((s) => ({ ...s, siteLockMessage: v }))}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-ink-900/8 pt-4">
               <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
                 Wholesale Minimum Order Quantity (MOQ)
               </label>
@@ -671,6 +703,65 @@ export default function AdminSettingsPage() {
               label="Button Link"
               value={promotion.ctaHref}
               onChange={(v) => setPromotion((p) => ({ ...p, ctaHref: v }))}
+            />
+            <SaveButton saved={saved} />
+          </form>
+        )}
+
+        {tab === "Sale" && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              updateSettings({ sale });
+              flashSaved();
+            }}
+            className="max-w-sm space-y-4"
+          >
+            <p className="text-sm text-ink-700/70">
+              A bold sitewide sale banner with a live countdown. Set your discounted prices on the
+              products themselves (the &ldquo;Compare-at price&rdquo; field) — this banner is the
+              storewide announcement and timer for them. It hides itself automatically when the
+              countdown runs out.
+            </p>
+            <label className="flex items-center gap-3 text-sm font-semibold text-ink-900">
+              <input
+                type="checkbox"
+                checked={sale.enabled}
+                onChange={(e) => setSale((s) => ({ ...s, enabled: e.target.checked }))}
+                className="h-4 w-4 rounded border-cream-200 accent-sunset-500"
+              />
+              Show sale banner on the storefront
+            </label>
+            <TextareaField
+              label="Headline"
+              value={sale.headline}
+              onChange={(v) => setSale((s) => ({ ...s, headline: v }))}
+              rows={2}
+            />
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
+                Ends At (optional)
+              </label>
+              <input
+                type="datetime-local"
+                value={sale.endsAt.slice(0, 16)}
+                onChange={(e) => setSale((s) => ({ ...s, endsAt: e.target.value }))}
+                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-sunset-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-sunset-500/40"
+              />
+              <p className="mt-1 text-xs text-ink-700/60">
+                Drives the countdown and auto-hides the banner when reached. Leave blank for a banner
+                with no timer.
+              </p>
+            </div>
+            <Field
+              label="Button Label"
+              value={sale.ctaLabel}
+              onChange={(v) => setSale((s) => ({ ...s, ctaLabel: v }))}
+            />
+            <Field
+              label="Button Link"
+              value={sale.ctaHref}
+              onChange={(v) => setSale((s) => ({ ...s, ctaHref: v }))}
             />
             <SaveButton saved={saved} />
           </form>
