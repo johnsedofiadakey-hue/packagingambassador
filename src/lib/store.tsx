@@ -45,6 +45,10 @@ export type Order = {
   webhookReconstructed?: boolean;
   /** True if checkoutLocked was on in settings at the moment this order was created. */
   orderedWhileLocked?: boolean;
+  /** Set when the atomic stock decrement found insufficient stock. Payment already
+   *  succeeded, so the order stands but needs staff reconciliation. */
+  needsStockReview?: boolean;
+  stockShortfall?: { slug: string; name: string; requested: number; available: number }[];
 };
 
 // Same OrderStatus vocabulary as retail — a second enum here is exactly the kind of drift
@@ -69,6 +73,8 @@ export type WholesaleOrder = {
   serverValidated?: boolean;
   webhookReconstructed?: boolean;
   orderedWhileLocked?: boolean;
+  needsStockReview?: boolean;
+  stockShortfall?: { slug: string; name: string; requested: number; available: number }[];
 };
 
 export type BusinessCustomer = {

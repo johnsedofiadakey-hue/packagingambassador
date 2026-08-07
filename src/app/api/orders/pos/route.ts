@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminDb, verifyActiveStaff } from "@/lib/firebase-admin";
+import { settleInventoryForOrder } from "@/lib/inventory/stock";
 import { FieldValue } from "firebase-admin/firestore";
 
 export async function POST(request: Request) {
@@ -48,30 +49,29 @@ export async function POST(request: Request) {
     }
 
     const batch = db.batch();
-    
+
     // 1. Create order
     const orderRef = db.collection(collectionName).doc(orderId);
     batch.set(orderRef, orderData);
 
-    // 2. Deduct stock and increment units sold
-    for (const line of lines) {
-      const productRef = db.collection("products").doc(line.slug);
-      batch.update(productRef, {
-        stock: FieldValue.increment(-line.quantity),
-        unitsSold: FieldValue.increment(line.quantity)
-      });
-    }
-
-    // 3. Bump revenue stats — must match the monthly, per-channel rollup the
-    //    analytics dashboard reads (revenueStats/{YYYY-MM} with {retail|wholesale}
-    //    fields). Writing a daily doc or differently-named fields makes POS revenue
-    //    invisible to the BI dashboard.
+    // 2. Bump revenue stats — must match the monthly, per-channel rollup the analytics
+    //    dashboard reads (revenueStats/{YYYY-MM} with {retail|wholesale} fields).
     const monthKey = new Date().toISOString().slice(0, 7); // YYYY-MM
     const channelKey = channel === "wholesale" ? "wholesale" : "retail";
     const statsRef = db.collection("revenueStats").doc(monthKey);
     batch.set(statsRef, { [channelKey]: FieldValue.increment(subtotal) }, { merge: true });
 
     await batch.commit();
+
+    // 3. Stock settlement runs as its own transaction (a batch can't read to detect
+    //    oversell) — same atomic decrement + unitsSold + low-stock alerts as the
+    //    online paths.
+    const shortfalls = await settleInventoryForOrder(db, lines);
+    if (shortfalls.length > 0) {
+      await orderRef
+        .update({ needsStockReview: true, stockShortfall: shortfalls })
+        .catch((err) => console.error("[pos] failed to flag shortfall", err));
+    }
 
     return NextResponse.json({ success: true, orderId });
   } catch (error) {

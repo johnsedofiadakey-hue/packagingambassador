@@ -19,6 +19,7 @@ import {
   BarChart3,
   Monitor,
   Receipt,
+  Boxes,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { auth } from "@/lib/firebase";
@@ -31,6 +32,7 @@ const NAV = [
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag, adminOnly: false },
   { href: "/admin/sales", label: "Sales Records", icon: Receipt, adminOnly: false },
   { href: "/admin/products", label: "Products", icon: Package, adminOnly: false },
+  { href: "/admin/inventory", label: "Inventory", icon: Boxes, adminOnly: false },
   { href: "/admin/categories", label: "Categories", icon: FolderTree, adminOnly: false },
   { href: "/admin/business-customers", label: "Business Customers", icon: Building2, adminOnly: false },
   { href: "/admin/blog", label: "Blog", icon: Newspaper, adminOnly: true },

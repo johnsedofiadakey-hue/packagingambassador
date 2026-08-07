@@ -1,44 +1,12 @@
 import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { settleInventoryForOrder } from "@/lib/inventory/stock";
 import type { CartLine } from "@/lib/cart-context";
 
 export const GENERIC_PAYMENT_ERROR = "We couldn't confirm your payment. Please try again or contact us.";
 
 function generateOrderId(prefix: "ORD" | "WHS") {
   return `${prefix}-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
-}
-
-/**
- * Bump each ordered product's lifetime `unitsSold` counter (powers best-sellers without
- * reducing over the whole orders collection). Quantities are aggregated per slug first — a
- * batch can't write the same doc twice when one order has two lines of the same product.
- * Called only when an order is genuinely created, never on an idempotent re-resolve.
- */
-async function incrementUnitsSold(db: Firestore, lines: CartLine[]) {
-  const perSlug = new Map<string, number>();
-  for (const line of lines) {
-    perSlug.set(line.slug, (perSlug.get(line.slug) ?? 0) + line.quantity);
-  }
-  await Promise.all(
-    [...perSlug].map(([slug, qty]) =>
-      db.collection("products").doc(slug).update({ unitsSold: FieldValue.increment(qty) })
-      // A line referencing a since-deleted product shouldn't fail the whole order.
-      .catch((err) => console.error("[unitsSold] increment failed", slug, err))
-    )
-  );
-}
-
-async function deductStock(db: Firestore, lines: CartLine[]) {
-  const perSlug = new Map<string, number>();
-  for (const line of lines) {
-    perSlug.set(line.slug, (perSlug.get(line.slug) ?? 0) + line.quantity);
-  }
-  await Promise.all(
-    [...perSlug].map(([slug, qty]) =>
-      db.collection("products").doc(slug).update({ stock: FieldValue.increment(-qty) })
-      .catch((err) => console.error("[deductStock] failed", slug, err))
-    )
-  );
 }
 
 /**
@@ -203,11 +171,17 @@ export async function createPaidOrderIfNotExists(
   };
 
   await db.collection("orders").doc(id).set(order);
-  await Promise.all([
-    incrementUnitsSold(db, input.lines),
-    deductStock(db, input.lines),
+  const [shortfalls] = await Promise.all([
+    settleInventoryForOrder(db, input.lines),
     bumpRevenueStats(db, "retail", input.subtotal, now),
   ]);
+  if (shortfalls.length > 0) {
+    await db
+      .collection("orders")
+      .doc(id)
+      .update({ needsStockReview: true, stockShortfall: shortfalls })
+      .catch((err) => console.error("[stock] failed to flag shortfall", id, err));
+  }
 
   return {
     order: { id: order.id, status: order.status, createdAt: order.createdAt, lines: order.lines, subtotal: order.subtotal },
@@ -307,11 +281,17 @@ export async function createPaidWholesaleOrderIfNotExists(
       { merge: true }
     ),
   ]);
-  await Promise.all([
-    incrementUnitsSold(db, input.lines),
-    deductStock(db, input.lines),
+  const [shortfalls] = await Promise.all([
+    settleInventoryForOrder(db, input.lines),
     bumpRevenueStats(db, "wholesale", input.subtotal, now),
   ]);
+  if (shortfalls.length > 0) {
+    await db
+      .collection("wholesaleOrders")
+      .doc(id)
+      .update({ needsStockReview: true, stockShortfall: shortfalls })
+      .catch((err) => console.error("[stock] failed to flag shortfall", id, err));
+  }
 
   return {
     order: { id: order.id, status: order.status, createdAt: order.createdAt, lines: order.lines, subtotal: order.subtotal },

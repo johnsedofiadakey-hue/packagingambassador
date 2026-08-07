@@ -34,6 +34,7 @@ type OrderRow = {
   status: OrderStatus;
   lines: Order["lines"];
   serverValidated?: boolean;
+  needsStockReview?: boolean;
   paymentMethod?: "paystack" | "invoice";
   billingAddress?: string;
 };
@@ -51,6 +52,7 @@ function toRow(order: Order): OrderRow {
     status: order.status,
     lines: order.lines,
     serverValidated: order.serverValidated,
+    needsStockReview: order.needsStockReview,
     paymentMethod: order.paymentMethod || "paystack",
   };
 }
@@ -68,6 +70,7 @@ function toWholesaleRow(order: WholesaleOrder): OrderRow {
     status: order.status,
     lines: order.lines,
     serverValidated: order.serverValidated,
+    needsStockReview: order.needsStockReview,
     paymentMethod: order.paymentMethod || "paystack",
     billingAddress: order.billingAddress,
   };
@@ -180,6 +183,15 @@ export default function AdminOrdersPage() {
                           >
                             <AlertTriangle className="h-3 w-3" />
                             Needs review
+                          </span>
+                        )}
+                        {row.needsStockReview && (
+                          <span
+                            title="Ordered more than was in stock — payment already went through, so fulfil and reconcile inventory manually."
+                            className="ml-2 inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-600"
+                          >
+                            <AlertTriangle className="h-3 w-3" />
+                            Stock review
                           </span>
                         )}
                         <span

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { settleInventoryForOrder } from "@/lib/inventory/stock";
 import { rateLimit } from "@/lib/rate-limit";
 
 /**
@@ -73,24 +74,14 @@ export async function POST(req: Request) {
       { merge: true }
     );
 
-    // Deduct stock + count units sold, same as the paid path.
-    const perSlug = new Map<string, number>();
-    for (const line of lines) {
-      perSlug.set(line.slug, (perSlug.get(line.slug) ?? 0) + line.quantity);
+    // Atomic stock decrement (+ unitsSold), oversell detection, and low-stock alerts —
+    // the same settlement every order path uses.
+    const shortfalls = await settleInventoryForOrder(db, lines);
+    if (shortfalls.length > 0) {
+      await orderRef
+        .update({ needsStockReview: true, stockShortfall: shortfalls })
+        .catch((err) => console.error("[wholesale invoice] failed to flag shortfall", err));
     }
-    await Promise.all(
-      [...perSlug].map(([slug, qty]) =>
-        db
-          .collection("products")
-          .doc(slug)
-          .update({
-            stock: FieldValue.increment(-qty),
-            unitsSold: FieldValue.increment(qty),
-          })
-          // A line referencing a since-deleted product shouldn't fail the whole order.
-          .catch((err) => console.error("[wholesale invoice] stock update failed", slug, err))
-      )
-    );
 
     return NextResponse.json({ id: orderRef.id, subtotal, lines });
   } catch (err) {

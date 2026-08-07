@@ -27,6 +27,9 @@ export type Product = {
   /** Lifetime units sold, incremented server-side at order creation — powers best-sellers
    *  without reducing over the whole orders collection. */
   unitsSold?: number;
+  /** Dedup flag for low-stock alerts: set true when stock crosses at/below the threshold,
+   *  cleared when a restock lifts it back above. Managed server-side by the inventory layer. */
+  lowStockAlerted?: boolean;
   description: string;
   colors: ColorVariant[];
   sizes: string[];
