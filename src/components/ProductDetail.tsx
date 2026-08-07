@@ -27,8 +27,8 @@ export function ProductDetail({
   const minQty = isWholesale ? (product.wholesaleMinQty ?? 1) : 1;
   const price = getDisplayPrice(product, mode);
   const discount = isWholesale ? null : getDiscountPercent(product);
-  const [color, setColor] = useState(product.colors[0]?.name ?? "");
-  const [size, setSize] = useState(product.sizes[0]);
+  const [color, setColor] = useState((product.colors || [])[0]?.name ?? "");
+  const [size, setSize] = useState((product.sizes || [])[0] ?? "");
   const [quantity, setQuantity] = useState(minQty);
   const [justAdded, setJustAdded] = useState(false);
 
@@ -116,7 +116,7 @@ export function ProductDetail({
           <div className="mt-6">
             <p className="text-sm font-semibold text-ink-900">Color: {color}</p>
             <div className="mt-2 flex gap-2">
-              {product.colors.map((c) => (
+              {(product.colors || []).map((c) => (
                 <button
                   key={c.name}
                   onClick={() => setColor(c.name)}
@@ -133,7 +133,7 @@ export function ProductDetail({
           <div className="mt-6">
             <p className="text-sm font-semibold text-ink-900">Size</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {product.sizes.map((s) => (
+              {(product.sizes || []).map((s) => (
                 <button
                   key={s}
                   onClick={() => setSize(s)}
@@ -194,7 +194,7 @@ export function ProductDetail({
           <div className="mt-10 border-t border-cream-200 pt-6">
             <h2 className="font-display font-semibold text-ink-900">Specifications</h2>
             <ul className="mt-3 space-y-2 text-sm text-ink-700/80">
-              {product.specs.map((spec) => (
+              {(product.specs || []).map((spec) => (
                 <li key={spec} className="flex items-start gap-2">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
                   {spec}

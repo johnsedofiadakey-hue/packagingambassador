@@ -52,7 +52,7 @@ export default function BlogPostPage() {
       <p className="mt-3 text-sm text-ink-700/60">{post.readTime}</p>
 
       <div className="mt-8 space-y-5 text-ink-700/90">
-        {post.content.map((paragraph, i) => (
+        {(post.content || []).map((paragraph, i) => (
           <p key={i}>{paragraph}</p>
         ))}
       </div>

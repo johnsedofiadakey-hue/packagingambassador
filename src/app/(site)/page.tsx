@@ -69,7 +69,7 @@ export default function Home() {
 
             <h1 className="mt-6 font-display text-5xl font-extrabold leading-[1.04] text-balance sm:text-6xl lg:text-7xl">
               {hero.headline}{" "}
-              {hero.headlineAccent.split("\n").map((line, i) => (
+              {(hero?.headlineAccent || "").split("\n").map((line, i) => (
                 <span key={i} className="block text-amber-300">
                   {line}
                 </span>
