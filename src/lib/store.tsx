@@ -114,6 +114,9 @@ export type HeroSettings = {
   statValue: string;
   statLabel: string;
   image: string;
+  /** Full-bleed hero background video. Takes precedence over slides when set; empty falls
+   *  through to slides, then the branded gradient. */
+  videoUrl: string;
   /** Full-bleed hero background slideshow — empty falls back to the branded gradient. */
   slides: string[];
 };
@@ -205,6 +208,7 @@ const DEFAULT_HERO: HeroSettings = {
   statValue: "2,000+",
   statLabel: "Customers served",
   image: "",
+  videoUrl: "/hero-video.mp4",
   slides: [],
 };
 

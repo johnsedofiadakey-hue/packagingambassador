@@ -58,7 +58,7 @@ export default function Home() {
     <div>
       {/* Full-screen takeover hero */}
       <section className="relative flex min-h-[100svh] items-center overflow-hidden text-white">
-        <HeroSlider slides={hero.slides} />
+        <HeroSlider videoUrl={hero.videoUrl} slides={hero.slides} />
 
         <div className="relative mx-auto w-full max-w-7xl px-6 pb-28 pt-32">
           <div className="max-w-2xl">

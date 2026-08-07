@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check, X } from "lucide-react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
@@ -141,6 +141,24 @@ function HeroForm({ hero, onSave }: { hero: HeroSettings; onSave: (hero: HeroSet
   const removeSlide = (index: number) =>
     setValues((prev) => ({ ...prev, slides: prev.slides.filter((_, i) => i !== index) }));
 
+  const uploadVideo = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      const path = `hero/video-${crypto.randomUUID()}-${file.name}`;
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setValues((prev) => ({ ...prev, videoUrl: url }));
+    } catch {
+      setError("Couldn't upload the video. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -159,10 +177,43 @@ function HeroForm({ hero, onSave }: { hero: HeroSettings; onSave: (hero: HeroSet
   return (
     <form onSubmit={handleSubmit} className="max-w-lg space-y-4">
       <p className="text-sm text-ink-700/70">
-        Controls the full-screen homepage hero. Add background slides — they crossfade behind the
-        headline. Leave them empty to use the branded gradient. The Shop Now and Track Your Order
-        buttons are fixed.
+        Controls the full-screen homepage hero. A background video plays if set; otherwise
+        background slides crossfade; otherwise the branded gradient shows. The Shop Now and Track
+        Your Order buttons are fixed.
       </p>
+
+      <div>
+        <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
+          Hero Background Video
+        </label>
+        {values.videoUrl && (
+          <div className="mt-2 flex items-center gap-3">
+            <video
+              src={values.videoUrl}
+              className="h-20 w-28 rounded-xl object-cover"
+              muted
+              playsInline
+            />
+            <button
+              type="button"
+              onClick={() => set("videoUrl", "")}
+              className="rounded-full border border-red-500/30 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-500/10"
+            >
+              Remove video
+            </button>
+          </div>
+        )}
+        <input
+          type="file"
+          accept="video/*"
+          onChange={(e) => uploadVideo(e.target.files)}
+          className="mt-3 block text-xs text-ink-700/70 file:mr-3 file:rounded-full file:border-0 file:bg-amber-500 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
+        />
+        <p className="mt-1 text-xs text-ink-700/50">
+          A muted, looping background video — takes precedence over slides. Remove it to fall back
+          to slides or the gradient.
+        </p>
+      </div>
 
       <div>
         <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
@@ -257,6 +308,24 @@ function ColorField({
   );
 }
 
+// The same --theme-* custom properties ThemeInjector drives — reused here so the color
+// pickers can preview live before saving.
+const THEME_VARS: Record<keyof ThemeSettings, string> = {
+  primaryColor: "--theme-primary",
+  secondaryColor: "--theme-secondary",
+  accentColor: "--theme-accent",
+  textColor: "--theme-text",
+  backgroundColor: "--theme-background",
+};
+
+function applyThemeVars(theme: ThemeSettings) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement.style;
+  (Object.keys(THEME_VARS) as Array<keyof ThemeSettings>).forEach((k) => {
+    if (theme[k]) root.setProperty(THEME_VARS[k], theme[k]);
+  });
+}
+
 function ThemeForm({
   theme,
   defaultTheme,
@@ -269,15 +338,33 @@ function ThemeForm({
   const [values, setValues] = useState<ThemeSettings>(theme);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const dirty = useRef(false);
 
-  const set = <K extends keyof ThemeSettings>(key: K, value: ThemeSettings[K]) =>
+  // Adopt the saved theme once it streams in from Firestore — the form can mount before the
+  // settings listener resolves. Guarded by `dirty` so it never clobbers in-progress edits;
+  // without this the pickers would sit on defaults and a save would wipe the real theme.
+  useEffect(() => {
+    if (!dirty.current) setValues(theme);
+  }, [theme]);
+
+  // Live preview — write the picked colors to the page immediately. On unmount (leaving
+  // without saving) restore the saved theme so a discarded edit doesn't linger.
+  useEffect(() => {
+    applyThemeVars(values);
+  }, [values]);
+  useEffect(() => () => applyThemeVars(theme), [theme]);
+
+  const set = <K extends keyof ThemeSettings>(key: K, value: ThemeSettings[K]) => {
+    dirty.current = true;
     setValues((prev) => ({ ...prev, [key]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
       await onSave(values);
+      dirty.current = false; // saved value now matches props; allow future external syncs
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
@@ -327,7 +414,10 @@ function ThemeForm({
         </button>
         <button
           type="button"
-          onClick={() => setValues(defaultTheme)}
+          onClick={() => {
+            dirty.current = true;
+            setValues(defaultTheme);
+          }}
           className="rounded-full border border-ink-900/15 px-6 py-3 font-semibold text-ink-800 transition-colors hover:bg-ink-900/5"
         >
           Reset to Default
