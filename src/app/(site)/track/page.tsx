@@ -158,9 +158,20 @@ function TrackPageInner() {
 
             <ul className="mt-6 divide-y divide-cream-200 border-t border-cream-200">
               {order.lines.map((line, i) => (
-                <li key={i} className="flex items-center justify-between py-3 text-sm">
-                  <span className="text-ink-800">
-                    {line.name} × {line.quantity}
+                <li key={i} className="flex items-center gap-3 py-3 text-sm">
+                  {line.image ? (
+                    <img
+                      src={line.image}
+                      alt={line.name}
+                      className="h-10 w-10 shrink-0 rounded-lg border border-cream-200 object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-cream-200 bg-cream-100 text-xs text-ink-700/40">
+                      —
+                    </span>
+                  )}
+                  <span className="flex-1 text-ink-800">
+                    {line.name} ({line.color}, {line.size}) × {line.quantity}
                   </span>
                   <span className="font-semibold text-ink-900">
                     {formatPrice(line.price * line.quantity)}
