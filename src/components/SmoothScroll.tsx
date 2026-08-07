@@ -35,15 +35,28 @@ export function SmoothScroll() {
     // Lenis to recompute (debounced — this can fire a lot during a
     // Firestore-driven render burst).
     let resizeTimer: ReturnType<typeof setTimeout>;
-    const mutationObserver = new MutationObserver(() => {
+    const scheduleResize = () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => lenisRef.current?.resize(), 150);
-    });
+    };
+
+    const mutationObserver = new MutationObserver(scheduleResize);
     mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+    // The MutationObserver only catches DOM *insertions*. Height also grows when
+    // already-present images/video/fonts finish loading (no mutation fires) — which
+    // otherwise leaves Lenis's cached limit stale and the footer unreachable. A
+    // ResizeObserver on the scroll content and a window `load` pass cover those.
+    const resizeObserver = new ResizeObserver(scheduleResize);
+    resizeObserver.observe(document.documentElement);
+    const onLoad = () => lenisRef.current?.resize();
+    window.addEventListener("load", onLoad);
 
     return () => {
       clearTimeout(resizeTimer);
       mutationObserver.disconnect();
+      resizeObserver.disconnect();
+      window.removeEventListener("load", onLoad);
       cancelAnimationFrame(frameId);
       lenis.destroy();
       lenisRef.current = null;

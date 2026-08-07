@@ -119,9 +119,12 @@ body {
   50% { transform: translate(4%, 6%) scale(0.94); }
 }
 
-.animate-drift-a { animation: drift-a 22s ease-in-out infinite; }
-.animate-drift-b { animation: drift-b 26s ease-in-out infinite; }
-.animate-drift-c { animation: drift-c 19s ease-in-out infinite; }
+/* will-change promotes these big blurred blobs to their own GPU layer so the
+   scale/translate animation is composited instead of re-rasterising the blur
+   every frame — that re-raster is what made scrolling past them janky. */
+.animate-drift-a { animation: drift-a 22s ease-in-out infinite; will-change: transform; }
+.animate-drift-b { animation: drift-b 26s ease-in-out infinite; will-change: transform; }
+.animate-drift-c { animation: drift-c 19s ease-in-out infinite; will-change: transform; }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-drift-a, .animate-drift-b, .animate-drift-c {
@@ -145,7 +148,7 @@ body {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
 }
-.animate-float-soft { animation: float-soft 7s ease-in-out infinite; }
+.animate-float-soft { animation: float-soft 7s ease-in-out infinite; will-change: transform; }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-gradient-pan, .animate-float-soft { animation: none; }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Full-bleed hero backdrop. Precedence: a background video, else crossfading admin-uploaded
@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
  */
 export function HeroSlider({ videoUrl = "", slides = [] }: { videoUrl?: string; slides?: string[] }) {
   const [index, setIndex] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const hasVideo = videoUrl.trim().length > 0;
   const showSlides = !hasVideo && slides.length > 0;
 
@@ -18,6 +19,23 @@ export function HeroSlider({ videoUrl = "", slides = [] }: { videoUrl?: string; 
     const id = setInterval(() => setIndex((i) => (i + 1) % slides.length), 5500);
     return () => clearInterval(id);
   }, [hasVideo, slides.length]);
+
+  // Pause the background video once the hero scrolls out of view — a playing video keeps
+  // decoding and eats GPU/CPU even off-screen, which shows up as scroll jank further down
+  // the page. Resume when it scrolls back in.
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) vid.play().catch(() => {});
+        else vid.pause();
+      },
+      { threshold: 0.05 }
+    );
+    io.observe(vid);
+    return () => io.disconnect();
+  }, [hasVideo]);
 
   return (
     <div aria-hidden className="absolute inset-0 overflow-hidden">
@@ -30,6 +48,7 @@ export function HeroSlider({ videoUrl = "", slides = [] }: { videoUrl?: string; 
 
       {hasVideo && (
         <video
+          ref={videoRef}
           className="absolute inset-0 h-full w-full object-cover"
           src={videoUrl}
           autoPlay

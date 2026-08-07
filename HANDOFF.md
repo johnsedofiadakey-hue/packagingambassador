@@ -1,8 +1,9 @@
 # Packaging Ambassadors — Project Handoff
 
-Last updated: 2026-07-21 (Lenis scroll-limit fix). Read this before touching the codebase — it explains what exists, why it's
-built the way it is, and what's still missing. This is a living document; keep it updated as the
-project changes so the next session (human or AI) doesn't have to reconstruct context from scratch.
+Last updated: 2026-08-07 (blueprint feature build + POS merge, hero video, footer redesign, theme/scroll
+fixes). Read this before touching the codebase — it explains what exists, why it's built the way it is,
+and what's still missing. This is a living document; keep it updated as the project changes so the next
+session (human or AI) doesn't have to reconstruct context from scratch.
 
 ## What this is
 
@@ -307,19 +308,26 @@ gated admin pages) that can't be statically exported.
 
 - `.firebaserc` — project alias → `packagingambassador`.
 - `firebase.json` — `apphosting.backendId: "packaging-ambassadors"`, `rootDir: "/"`.
-- `apphosting.yaml` — the 6 `NEXT_PUBLIC_FIREBASE_*` values (not secrets — same config already shipped
-  in every page's HTML), `runConfig.minInstances: 0`. `ARKESEL_API_KEY`/`BREVO_API_KEY` deliberately
-  **not** declared here (no real values exist yet) — set them via `firebase apphosting:secrets:set`
-  once real keys exist, never commit real key values to this file.
-- Backend has **no connected GitHub repo** — deploys are push-from-local via `firebase deploy --only
-  apphosting`, not `apphosting:rollouts:create --git-branch`. This was a deliberate fallback after
-  confirming the backend works fine without a GitHub App connection; a repo-connected backend would
-  auto-deploy on push instead, but isn't set up.
-- Requires the **Blaze (pay-as-you-go) plan** — the project was upgraded to Blaze specifically to
-  enable App Hosting.
-- To redeploy after code changes: `firebase deploy --only apphosting` from repo root. Also pushed to
-  GitHub (`origin main`) for source backup — the two are independent, pushing to GitHub does **not**
-  trigger a redeploy since there's no repo connection.
+- `apphosting.yaml` — the 6 `NEXT_PUBLIC_FIREBASE_*` values (not secrets), `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`
+  as a committed `value:` (public keys aren't secret — currently the **test** `pk_test_*`, needs BUILD
+  availability since it's baked into the client bundle), and `secret:` references for `PAYSTACK_SECRET_KEY`
+  and `BREVO_API_KEY`. `runConfig.minInstances: 0`. **Set a secret's value with**
+  `firebase apphosting:secrets:set <NAME>` BEFORE pushing a config that references it, or the rollout fails.
+  Both secrets are set (Paystack **test** secret + a real Brevo key). `ARKESEL_API_KEY` and an optional
+  `CRON_SECRET` (for the weekly-summary cron) are not set yet.
+- Backend is **now connected to the GitHub repo** (`johnsedofiadakey-hue/packagingambassador`, branch
+  `main`) with **automatic rollouts** — a push to `main` triggers a build+deploy on its own. (The old
+  note that there was no repo connection is stale as of 2026-08-07.)
+- Requires the **Blaze (pay-as-you-go) plan**.
+- To redeploy: **just push to `origin main`** — App Hosting auto-builds. Watch the rollout:
+  `gcloud builds list --project=packagingambassador --region=us-central1 --limit=3 --format="table(id,createTime,status)"`.
+  Note: static pages are CDN-cached with a 1-year `s-maxage`, so right after a rollout a plain URL may serve
+  a stale/404 response for ~1–2 min while traffic switches — cache-bust with a `?x=` query to hit the new
+  revision, and the CDN catches up shortly.
+- **Paystack webhook** is registered in the dashboard → `…/api/payments/paystack/webhook`.
+- **firebase-admin now does more than order tracking** — it powers the Paystack verify/webhook routes, the
+  POS/invoice/weekly-summary/reconcile API routes, and the inventory layer. All server-only; ADC on Cloud
+  Run, `gcloud auth application-default login` locally.
 
 ## Mobile
 
@@ -590,3 +598,55 @@ root (so `node_modules` resolves), run it with `node`, delete it immediately —
     missing-fields returns 400 and a bogus reference returns 502 with no order created, then deleted the
     test order. Typechecked, linted, and production-built clean. **Still on test keys** — see Known Gap #1
     for what's needed to go live with real charges.
+15. **Blueprint feature build, POS merge, hero video, footer redesign, theme + scroll fixes** (2026-08-07,
+    largest session to date). Context: a separate agent ("Antigravity") had committed a **POS system,
+    B2B invoice checkout, stock auto-deduction, sales records, and invoice/waybill documents** on top of
+    the prior work, but its last two rollouts had **failed to build** (production was stuck on the morning's
+    revision). Work done, in order:
+    - **Connected the App Hosting backend to GitHub** with auto-rollouts (it previously had no repo
+      connection). Pushes to `main` now deploy automatically. Registered the Paystack test webhook URL.
+    - **Fixed the build break**: Antigravity's `wholesale/invoice/[id]` and `waybill/[id]` pages were
+      written against a `WholesaleOrder` shape that doesn't exist (`order.customer.*` nesting, a `"Paid"`
+      status, `createdAt._seconds`) and used an `onClick` in a Server Component. Rewrote them to the real
+      flat schema + `javascript:window.print()` (matching the working POS receipt page).
+    - **Fixed silent mis-integration** of Antigravity's order paths: the invoice route wrote customer data
+      *nested* to a `business_customers` collection (rest of app: flat, `businessCustomers`) with a
+      serverTimestamp; the POS route wrote `revenueStats` at daily granularity with wrong field names so
+      POS revenue was invisible to analytics. Both conformed to the established schema.
+    - **Hardened** the two new order-creation API routes (they mutated stock/revenue with no auth): added
+      `verifyActiveStaff()` in `firebase-admin.ts` (verifies a Firebase ID token + active staff doc), gated
+      the POS route behind it (client sends `auth.currentUser.getIdToken()`), and rate-limited the public
+      wholesale-invoice route.
+    - **Built the 9 missing blueprint features** (from a gap analysis against `platform_blueprint.md`),
+      in three deploys: **(G1)** live order tracking via 30s polling (rate limit raised 12→40), a sitewide
+      **sale mode + countdown banner** (`SaleBanner`, `settings.sale`), and a hard **site-wide lockdown**
+      (`SiteLockGate`, `settings.siteLocked`, staff bypass); **(G2)** **atomic stock** — decrement moved
+      into a Firestore transaction in `src/lib/inventory/stock.ts` (`settleInventoryForOrder`) used by all
+      four order paths, flagging oversell (`needsStockReview`/`stockShortfall`, red badge in admin orders),
+      a new **Inventory admin screen** (`/admin/inventory`), and **low-stock email alerts** (deduped via a
+      `lowStockAlerted` product flag); **(G3)** a **Paystack↔DB reconciliation tool** (`/admin/reconciliation`
+      + `/api/admin/reconcile` — diffs Paystack's successful charges vs orders, rebuilds missing ones from
+      charge metadata), and a **weekly summary digest** (`/api/admin/weekly-summary` + `lib/notifications/
+      weekly-summary.ts`, staff-token OR `x-cron-secret` for Cloud Scheduler, "Email now" button on
+      Analytics).
+    - **Hero background video**: `HeroSettings.videoUrl` (default `/hero-video.mp4` in `public/`), rendered
+      by `HeroSlider` (video → slides → gradient precedence, gradient always underneath); admin upload in
+      Settings → Hero. Paused via IntersectionObserver when scrolled off-screen.
+    - **Navbar declutter**: top nav trimmed to Home + Wholesale (+ Search + Cart); Shop/About/Contact/Track
+      moved to (already present in) the footer. Removed the Shop dropdown + categories subscription from
+      `Header.tsx`.
+    - **Footer redesign**: floating rounded glass card over a forest→ink gradient with drifting colour
+      blobs, an animated gradient accent line (`animate-gradient-pan`), scroll-reveal columns, hover-animated
+      links, and a **visible staff-login pill** (was a near-invisible `text-cream-100/20` link).
+    - **Color control**: fixed a real `ThemeForm` bug (it initialised from props once, so a theme loading
+      after mount left the pickers on defaults and a save would overwrite the real theme) — now dirty-guarded
+      sync + live preview. **Root-caused the site-wide "dark buttons / dull footer": the saved
+      `settings.theme.primaryColor` is `#1a1a1a` (near-black)**, and the whole amber family derives from it.
+      The classifier blocks direct production-Firestore writes, so **the owner must reset it** in Settings →
+      Colors & Branding (set Primary to `#dd8f2e` or Reset to Default). Until then, amber elements render
+      dark/grey live even though the code is correct.
+    - **Scroll**: reachability was fine (Lenis limit tracked correctly), so the "something wrong at the
+      footer" was addressed as jank — GPU-promoted the drift/float animations (`will-change: transform`),
+      paused the off-screen hero video, and hardened Lenis resize (added a `ResizeObserver` on the scroll
+      content + a window `load` pass, since the MutationObserver only catches DOM insertions, not
+      image/video/font-load height growth — see the Lenis notes under Design System).
