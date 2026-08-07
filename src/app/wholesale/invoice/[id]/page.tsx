@@ -14,18 +14,18 @@ export default async function InvoicePage({ params }: { params: { id: string } }
   }
 
   const order = doc.data() as WholesaleOrder;
-  const date = order.createdAt ? new Date((order.createdAt as any)._seconds * 1000).toLocaleDateString() : new Date().toLocaleDateString();
+  const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString() : new Date().toLocaleDateString();
 
   return (
     <div className="min-h-screen bg-white p-8 font-sans text-black sm:p-12">
       {/* Print Button (hidden in print mode) */}
       <div className="mb-8 flex justify-end print:hidden">
-        <button
-          onClick={() => window.print()}
-          className="rounded-full bg-forest-600 px-6 py-2 text-sm font-semibold text-white hover:bg-forest-700"
+        <a
+          href="javascript:window.print()"
+          className="inline-block rounded-full bg-forest-600 px-6 py-2 text-sm font-semibold text-white hover:bg-forest-700"
         >
           Print / Save as PDF
-        </button>
+        </a>
       </div>
 
       <div className="mx-auto max-w-4xl">
@@ -46,11 +46,11 @@ export default async function InvoicePage({ params }: { params: { id: string } }
         <div className="mt-8 flex justify-between gap-8">
           <div className="flex-1">
             <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-400">Billed To</h3>
-            <p className="font-bold text-gray-900">{order.customer.businessName}</p>
-            <p className="text-gray-700">Attn: {order.customer.contactName}</p>
-            <p className="text-gray-700">{order.customer.phone}</p>
-            <p className="text-gray-700">{order.customer.email}</p>
-            <p className="mt-2 whitespace-pre-wrap text-gray-700">{order.customer.billingAddress || order.customer.deliveryAddress}</p>
+            <p className="font-bold text-gray-900">{order.businessName}</p>
+            <p className="text-gray-700">Attn: {order.contactName}</p>
+            <p className="text-gray-700">{order.phone}</p>
+            <p className="text-gray-700">{order.email}</p>
+            <p className="mt-2 whitespace-pre-wrap text-gray-700">{order.billingAddress || order.deliveryAddress}</p>
           </div>
 
           <div className="flex-1 text-right">
@@ -61,7 +61,7 @@ export default async function InvoicePage({ params }: { params: { id: string } }
             <div>
               <h3 className="mb-1 text-xs font-bold uppercase tracking-wider text-gray-400">Payment Status</h3>
               <p className="font-medium text-gray-900 uppercase">
-                {order.status === "Paid" ? "Paid" : "Pending / Unpaid"}
+                {order.paidAt ? "Paid" : "Pending / Unpaid"}
               </p>
             </div>
           </div>
