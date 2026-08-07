@@ -17,6 +17,8 @@ import {
   History,
   Building2,
   BarChart3,
+  Monitor,
+  Receipt,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { auth } from "@/lib/firebase";
@@ -25,9 +27,11 @@ import { useCurrentStaff } from "@/lib/useCurrentStaff";
 const NAV = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3, adminOnly: true },
+  { href: "/admin/pos", label: "Point of Sale", icon: Monitor, adminOnly: false },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingBag, adminOnly: false },
+  { href: "/admin/sales", label: "Sales Records", icon: Receipt, adminOnly: false },
   { href: "/admin/products", label: "Products", icon: Package, adminOnly: false },
   { href: "/admin/categories", label: "Categories", icon: FolderTree, adminOnly: false },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingBag, adminOnly: false },
   { href: "/admin/business-customers", label: "Business Customers", icon: Building2, adminOnly: false },
   { href: "/admin/blog", label: "Blog", icon: Newspaper, adminOnly: true },
   { href: "/admin/staff", label: "Staff", icon: Users, adminOnly: true },

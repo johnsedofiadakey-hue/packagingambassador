@@ -28,6 +28,19 @@ async function incrementUnitsSold(db: Firestore, lines: CartLine[]) {
   );
 }
 
+async function deductStock(db: Firestore, lines: CartLine[]) {
+  const perSlug = new Map<string, number>();
+  for (const line of lines) {
+    perSlug.set(line.slug, (perSlug.get(line.slug) ?? 0) + line.quantity);
+  }
+  await Promise.all(
+    [...perSlug].map(([slug, qty]) =>
+      db.collection("products").doc(slug).update({ stock: FieldValue.increment(-qty) })
+      .catch((err) => console.error("[deductStock] failed", slug, err))
+    )
+  );
+}
+
 /**
  * Bump the monthly revenue rollup. A `revenueStats/{YYYY-MM}` doc holds per-channel running
  * totals, so the analytics dashboard reads ~6 tiny docs for a revenue trend instead of running
@@ -192,6 +205,7 @@ export async function createPaidOrderIfNotExists(
   await db.collection("orders").doc(id).set(order);
   await Promise.all([
     incrementUnitsSold(db, input.lines),
+    deductStock(db, input.lines),
     bumpRevenueStats(db, "retail", input.subtotal, now),
   ]);
 
@@ -295,6 +309,7 @@ export async function createPaidWholesaleOrderIfNotExists(
   ]);
   await Promise.all([
     incrementUnitsSold(db, input.lines),
+    deductStock(db, input.lines),
     bumpRevenueStats(db, "wholesale", input.subtotal, now),
   ]);
 

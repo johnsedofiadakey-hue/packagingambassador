@@ -29,6 +29,7 @@ const emptyDetails = {
   businessName: "",
   contactName: "",
   deliveryAddress: "",
+  billingAddress: "",
 };
 
 function CartDrawerView({
@@ -44,7 +45,15 @@ function CartDrawerView({
   const { lines, updateQuantity, removeLine, clearCart, subtotal, itemCount, isOpen, closeCart } = cart;
   const [checkingOut, setCheckingOut] = useState(false);
   const [details, setDetails] = useState(emptyDetails);
+  const [paymentMethod, setPaymentMethod] = useState<"paystack" | "invoice">("paystack");
   const checkout = usePaystackCheckout({ channel, lines, subtotal });
+  
+  // Local state for invoice checkout success
+  const [invoiceOrderId, setInvoiceOrderId] = useState<string | null>(null);
+  const [isPlacingInvoice, setIsPlacingInvoice] = useState(false);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  
+  const confirmedId = checkout.confirmedOrderId || invoiceOrderId;
 
   const locked = isWholesale ? settings.wholesaleCheckoutLocked : settings.checkoutLocked;
   const lockMessage = isWholesale ? settings.wholesaleCheckoutLockMessage : settings.checkoutLockMessage;
@@ -59,13 +68,15 @@ function CartDrawerView({
 
   const handleClose = () => {
     closeCart();
-    if (checkout.confirmedOrderId) {
+    if (confirmedId) {
       checkout.reset();
+      setInvoiceOrderId(null);
       setCheckingOut(false);
+      setPaymentMethod("paystack");
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const customer = isWholesale
       ? {
@@ -74,8 +85,56 @@ function CartDrawerView({
           phone: details.phone,
           email: details.email || undefined,
           deliveryAddress: details.deliveryAddress,
+          billingAddress: details.billingAddress || details.deliveryAddress,
         }
       : { name: details.name, phone: details.phone, email: details.email || undefined, address: details.address };
+
+    if (isWholesale && paymentMethod === "invoice") {
+      setIsPlacingInvoice(true);
+      setInvoiceError(null);
+      try {
+        const res = await fetch("/api/orders/wholesale/invoice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customer,
+            lines,
+            subtotal,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setInvoiceError(data.error || "Failed to place order.");
+          setIsPlacingInvoice(false);
+          return;
+        }
+        setInvoiceOrderId(data.id);
+        setIsPlacingInvoice(false);
+        clearCart();
+        setCheckingOut(false);
+        fetch("/api/notifications/order-confirmation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: data.id,
+            customerName: details.contactName,
+            phone: details.phone,
+            email: details.email || undefined,
+            subtotal: data.subtotal,
+            lines: data.lines,
+            smsSenderId: settings.smsSenderId,
+            emailFromAddress: settings.emailFromAddress,
+            storeEmail: settings.storeEmail,
+            storeName: settings.storeName,
+            theme: settings.theme,
+          }),
+        }).catch(() => {});
+      } catch {
+        setInvoiceError("Failed to place order. Please try again.");
+        setIsPlacingInvoice(false);
+      }
+      return;
+    }
 
     checkout.placeOrder({
       email: details.email,
@@ -127,8 +186,8 @@ function CartDrawerView({
       >
         <div className="flex items-center justify-between border-b border-cream-200 px-5 py-4">
           <h2 className="font-display text-lg font-semibold text-ink-900">
-            {checkout.confirmedOrderId ? "Order Placed" : isWholesale ? "Wholesale Cart" : "Your Cart"}
-            {!checkout.confirmedOrderId && itemCount > 0 && (
+            {confirmedId ? "Order Placed" : isWholesale ? "Wholesale Cart" : "Your Cart"}
+            {!confirmedId && itemCount > 0 && (
               <span className="ml-2 text-sm font-normal text-ink-700/60">
                 {itemCount} item{itemCount === 1 ? "" : "s"}
               </span>
@@ -139,7 +198,7 @@ function CartDrawerView({
           </button>
         </div>
 
-        {checkout.confirmedOrderId ? (
+        {confirmedId ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-forest-800/10 text-forest-800">
               <CheckCircle2 className="h-8 w-8" />
@@ -153,12 +212,32 @@ function CartDrawerView({
             <div className="w-full rounded-2xl border border-amber-500/30 bg-amber-500/5 px-5 py-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-ink-700/60">Tracking number</p>
               <p className="mt-1 font-display text-xl font-bold tracking-wide text-ink-900">
-                {checkout.confirmedOrderId}
+                {confirmedId}
               </p>
             </div>
             <div className="mt-2 flex w-full flex-col gap-3">
+              {isWholesale && (
+                <div className="flex w-full gap-2 mb-2">
+                  <a
+                    href={`/wholesale/invoice/${confirmedId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 rounded-xl border border-ink-900/15 bg-white px-4 py-2 text-sm font-semibold text-ink-900 hover:bg-cream-100"
+                  >
+                    Invoice
+                  </a>
+                  <a
+                    href={`/wholesale/waybill/${confirmedId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 rounded-xl border border-ink-900/15 bg-white px-4 py-2 text-sm font-semibold text-ink-900 hover:bg-cream-100"
+                  >
+                    Waybill
+                  </a>
+                </div>
+              )}
               <Link
-                href={`/track?order=${checkout.confirmedOrderId}`}
+                href={`/track?order=${confirmedId}`}
                 onClick={handleClose}
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-ink-900/15 px-6 py-3 font-semibold text-ink-900 hover:border-amber-500 hover:text-amber-600"
               >
@@ -246,6 +325,10 @@ function CartDrawerView({
                 <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-sm text-ink-800">
                   {lockMessage}
                 </p>
+              ) : isWholesale && itemCount < settings.wholesaleMOQ ? (
+                <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-800">
+                  Wholesale requires a minimum of {settings.wholesaleMOQ} items total.
+                </p>
               ) : !checkingOut ? (
                 <button
                   onClick={() => setCheckingOut(true)}
@@ -274,16 +357,38 @@ function CartDrawerView({
                     onChange={(e) => set(isWholesale ? { deliveryAddress: e.target.value } : { address: e.target.value })}
                     className={input}
                   />
+                  {isWholesale && (
+                    <>
+                      <textarea
+                        rows={2}
+                        placeholder="Billing address (if different)"
+                        value={details.billingAddress}
+                        onChange={(e) => set({ billingAddress: e.target.value })}
+                        className={input}
+                      />
+                      <div className="mt-2 flex gap-4 rounded-xl border border-cream-200 bg-white p-3 text-sm">
+                        <label className="flex flex-1 items-center gap-2 font-medium">
+                          <input type="radio" checked={paymentMethod === "paystack"} onChange={() => setPaymentMethod("paystack")} className="h-4 w-4 text-forest-600" />
+                          Pay Online
+                        </label>
+                        <label className="flex flex-1 items-center gap-2 font-medium">
+                          <input type="radio" checked={paymentMethod === "invoice"} onChange={() => setPaymentMethod("invoice")} className="h-4 w-4 text-forest-600" />
+                          Invoice (Cash/Transfer)
+                        </label>
+                      </div>
+                    </>
+                  )}
                   <p className="text-xs text-ink-700/50">
-                    You&apos;ll pay securely via Paystack. Your order is confirmed once payment succeeds.
+                    {paymentMethod === "paystack" ? "You'll pay securely via Paystack. Your order is confirmed once payment succeeds." : "We will generate an invoice for your order."}
                   </p>
                   {checkout.paymentError && <p className="text-xs font-medium text-red-600">{checkout.paymentError}</p>}
+                  {invoiceError && <p className="text-xs font-medium text-red-600">{invoiceError}</p>}
                   <button
                     type="submit"
-                    disabled={checkout.placingOrder}
+                    disabled={checkout.placingOrder || isPlacingInvoice}
                     className={cn("w-full rounded-full py-3 font-semibold text-white disabled:opacity-60", accentBtn)}
                   >
-                    {checkout.placingOrder ? "Processing…" : `Pay ${formatPrice(subtotal)}`}
+                    {checkout.placingOrder || isPlacingInvoice ? "Processing…" : paymentMethod === "paystack" ? `Pay ${formatPrice(subtotal)}` : "Place Wholesale Order"}
                   </button>
                 </form>
               )}

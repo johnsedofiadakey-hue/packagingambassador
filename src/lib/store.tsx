@@ -36,6 +36,7 @@ export type Order = {
   lines: CartLine[];
   subtotal: number;
   status: OrderStatus;
+  paymentMethod?: "paystack" | "invoice";
   paystackReference?: string;
   paidAt?: string;
   /** Set to false only on an order reconstructed from the Paystack webhook fallback path —
@@ -58,9 +59,11 @@ export type WholesaleOrder = {
   phone: string;
   email?: string;
   deliveryAddress: string;
+  billingAddress?: string;
   lines: CartLine[];
   subtotal: number;
   status: OrderStatus;
+  paymentMethod?: "paystack" | "invoice";
   paystackReference?: string;
   paidAt?: string;
   serverValidated?: boolean;
@@ -75,6 +78,7 @@ export type BusinessCustomer = {
   phone: string;
   email?: string;
   deliveryAddress: string;
+  billingAddress?: string;
   orderCount: number;
   totalSpent: number;
   firstOrderAt: string;
@@ -156,6 +160,9 @@ export type StoreSettings = {
   /** Independent of checkoutLocked — an admin may want to pause one channel, not both. */
   wholesaleCheckoutLocked: boolean;
   wholesaleCheckoutLockMessage: string;
+  wholesaleMOQ: number;
+  lowStockThreshold: number;
+  storeAddress: string;
   smsProvider: string;
   smsSenderId: string;
   emailProvider: string;
@@ -238,6 +245,9 @@ const DEFAULT_SETTINGS: StoreSettings = {
   wholesaleCheckoutLocked: false,
   wholesaleCheckoutLockMessage:
     "Wholesale ordering is temporarily paused — please check back soon, or contact us directly.",
+  wholesaleMOQ: 10,
+  lowStockThreshold: 20,
+  storeAddress: "Accra, Ghana",
   smsProvider: "Arkesel",
   smsSenderId: "PackAmb",
   emailProvider: "Brevo",

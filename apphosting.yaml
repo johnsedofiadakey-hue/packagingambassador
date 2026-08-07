@@ -50,3 +50,30 @@ env:
     availability:
       - BUILD
       - RUNTIME
+
+  # Paystack public key — safe to commit (it ships in the client bundle either
+  # way). BUILD availability is required because it's baked into the browser
+  # bundle at build time. Currently the TEST key; swap for the pk_live_* value
+  # when going live (a new rollout re-bakes it).
+  - variable: NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
+    value: "pk_test_f2bb436ef8143e33ca393282087ad0eee90d35cd"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Paystack secret key — server-only. Never a plain value. Set the value with
+  #   firebase apphosting:secrets:set PAYSTACK_SECRET_KEY
+  # (paste the sk_test_* now; the sk_live_* later), then this reference injects
+  # it at runtime for the verify + webhook routes.
+  - variable: PAYSTACK_SECRET_KEY
+    secret: PAYSTACK_SECRET_KEY
+    availability:
+      - RUNTIME
+
+  # Brevo transactional-email API key — server-only. Set the value with
+  #   firebase apphosting:secrets:set BREVO_API_KEY
+  # Sends the branded order-confirmation email (src/lib/notifications).
+  - variable: BREVO_API_KEY
+    secret: BREVO_API_KEY
+    availability:
+      - RUNTIME

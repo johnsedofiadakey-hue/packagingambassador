@@ -13,6 +13,7 @@ import type { Product } from "@/lib/products";
 export type CartLine = {
   slug: string;
   name: string;
+  image?: string;
   price: number;
   unit: string;
   size: string;
@@ -79,6 +80,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         {
           slug: product.slug,
           name: product.name,
+          image: product.image || undefined,
           price: product.price,
           unit: product.unit,
           size: opts.size,

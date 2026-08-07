@@ -34,6 +34,8 @@ type OrderRow = {
   status: OrderStatus;
   lines: Order["lines"];
   serverValidated?: boolean;
+  paymentMethod?: "paystack" | "invoice";
+  billingAddress?: string;
 };
 
 function toRow(order: Order): OrderRow {
@@ -49,6 +51,7 @@ function toRow(order: Order): OrderRow {
     status: order.status,
     lines: order.lines,
     serverValidated: order.serverValidated,
+    paymentMethod: order.paymentMethod || "paystack",
   };
 }
 
@@ -65,6 +68,8 @@ function toWholesaleRow(order: WholesaleOrder): OrderRow {
     status: order.status,
     lines: order.lines,
     serverValidated: order.serverValidated,
+    paymentMethod: order.paymentMethod || "paystack",
+    billingAddress: order.billingAddress,
   };
 }
 
@@ -177,6 +182,16 @@ export default function AdminOrdersPage() {
                             Needs review
                           </span>
                         )}
+                        <span
+                          className={cn(
+                            "ml-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize",
+                            row.paymentMethod === "invoice"
+                              ? "bg-blue-500/10 text-blue-700"
+                              : "bg-ink-900/10 text-ink-700"
+                          )}
+                        >
+                          {row.paymentMethod === "invoice" ? "Invoice" : "Paystack"}
+                        </span>
                       </td>
                       <td className="px-5 py-3 text-ink-700/80">
                         {row.displayName}
@@ -223,17 +238,36 @@ export default function AdminOrdersPage() {
                           {row.email && (
                             <p className="mt-1 text-sm text-ink-700/70">{row.email}</p>
                           )}
+                          {row.billingAddress && row.billingAddress !== row.address && (
+                            <>
+                              <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ink-700/50">
+                                Billing Address
+                              </p>
+                              <p className="mt-1 text-sm text-ink-800">{row.billingAddress}</p>
+                            </>
+                          )}
 
                           <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ink-700/50">
                             Items
                           </p>
-                          <ul className="mt-2 space-y-1.5">
+                          <ul className="mt-2 space-y-2">
                             {row.lines.map((line, i) => (
-                              <li key={i} className="flex justify-between text-sm text-ink-800">
-                                <span>
+                              <li key={i} className="flex items-center gap-3 text-sm text-ink-800">
+                                {line.image ? (
+                                  <img
+                                    src={line.image}
+                                    alt={line.name}
+                                    className="h-10 w-10 shrink-0 rounded-lg border border-cream-200 object-cover"
+                                  />
+                                ) : (
+                                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-cream-200 bg-cream-100 text-xs text-ink-700/40">
+                                    —
+                                  </span>
+                                )}
+                                <span className="flex-1">
                                   {line.name} ({line.color}, {line.size}) × {line.quantity}
                                 </span>
-                                <span>{formatPrice(line.price * line.quantity)}</span>
+                                <span className="font-semibold">{formatPrice(line.price * line.quantity)}</span>
                               </li>
                             ))}
                           </ul>

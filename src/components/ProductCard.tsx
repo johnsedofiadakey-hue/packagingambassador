@@ -21,6 +21,7 @@ export function ProductCard({
   const price = getDisplayPrice(product, mode);
   const href = mode === "wholesale" ? `/wholesale/product/${product.slug}` : `/product/${product.slug}`;
   const accent = mode === "wholesale" ? "bg-forest-600 hover:bg-forest-700" : "bg-amber-500 hover:bg-amber-600";
+  const outOfStock = product.stock <= 0;
 
   return (
     <MotionLink
@@ -60,6 +61,13 @@ export function ProductCard({
             </motion.span>
           )}
         </div>
+        {outOfStock && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <span className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-white">
+              Out of Stock
+            </span>
+          </div>
+        )}
       </div>
       <div className="flex flex-1 flex-col gap-1 p-5">
         <span className="text-xs font-semibold uppercase tracking-wide text-amber-600">
@@ -86,13 +94,14 @@ export function ProductCard({
           {onQuickAdd && (
             <button
               type="button"
-              aria-label={`Add ${product.name} to cart`}
+              aria-label={outOfStock ? `${product.name} is out of stock` : `Add ${product.name} to cart`}
+              disabled={outOfStock}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 onQuickAdd(product);
               }}
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-colors ${accent}`}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-colors ${outOfStock ? "bg-ink-900/20 cursor-not-allowed" : accent}`}
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} />
             </button>

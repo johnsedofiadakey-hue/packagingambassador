@@ -24,6 +24,7 @@ export async function POST(request: Request) {
   }
 
   let snap;
+  let isWholesale = false;
   try {
     const db = getAdminDb();
     snap = await db.collection("orders").doc(orderId).get();
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
       // Same order-ID scheme, different collection — a wholesale customer uses this exact
       // same tracking page and form, no separate flow.
       snap = await db.collection("wholesaleOrders").doc(orderId).get();
+      if (snap.exists) isWholesale = true;
     }
   } catch {
     return NextResponse.json(
@@ -51,5 +53,6 @@ export async function POST(request: Request) {
     createdAt: order.createdAt,
     lines: order.lines,
     subtotal: order.subtotal,
+    isWholesale,
   });
 }

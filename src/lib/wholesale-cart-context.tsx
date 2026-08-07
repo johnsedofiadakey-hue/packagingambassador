@@ -73,6 +73,7 @@ export function WholesaleCartProvider({ children }: { children: React.ReactNode 
           {
             slug: product.slug,
             name: product.name,
+            image: product.image || undefined,
             price: product.wholesalePrice ?? product.price,
             unit: product.unit,
             size: opts.size,

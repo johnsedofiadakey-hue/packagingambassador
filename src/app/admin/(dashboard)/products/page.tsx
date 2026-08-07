@@ -11,7 +11,7 @@ import { formatPrice } from "@/lib/utils";
 import type { Product } from "@/lib/products";
 
 export default function AdminProductsPage() {
-  const { products, categories, loading, addProduct, updateProduct, removeProduct } =
+  const { products, categories, settings, loading, addProduct, updateProduct, removeProduct } =
     useAdminData();
   const [editing, setEditing] = useState<Product | "new" | null>(null);
   const [importing, setImporting] = useState(false);
@@ -76,9 +76,19 @@ export default function AdminProductsPage() {
                 <td className="px-5 py-3 text-ink-700/80">{product.categoryLabel}</td>
                 <td className="px-5 py-3 text-ink-900">{formatPrice(product.price)}</td>
                 <td className="px-5 py-3">
-                  <span className={product.stock < 50 ? "font-semibold text-red-600" : "text-ink-700/80"}>
+                  <span className={product.stock <= 0 ? "font-semibold text-red-600" : product.stock <= settings.lowStockThreshold ? "font-semibold text-amber-600" : "text-ink-700/80"}>
                     {product.stock}
                   </span>
+                  {product.stock <= 0 && (
+                    <span className="ml-2 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-600">
+                      Out of Stock
+                    </span>
+                  )}
+                  {product.stock > 0 && product.stock <= settings.lowStockThreshold && (
+                    <span className="ml-2 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                      Low Stock
+                    </span>
+                  )}
                 </td>
                 <td className="px-5 py-3 text-ink-700/60">{product.badge ?? "—"}</td>
                 <td className="px-5 py-3">

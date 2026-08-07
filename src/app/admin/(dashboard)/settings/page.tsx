@@ -442,10 +442,13 @@ export default function AdminSettingsPage() {
     storeName: settings.storeName,
     storePhone: settings.storePhone,
     storeEmail: settings.storeEmail,
+    storeAddress: settings.storeAddress,
     checkoutLocked: settings.checkoutLocked,
     checkoutLockMessage: settings.checkoutLockMessage,
     wholesaleCheckoutLocked: settings.wholesaleCheckoutLocked,
     wholesaleCheckoutLockMessage: settings.wholesaleCheckoutLockMessage,
+    wholesaleMOQ: settings.wholesaleMOQ,
+    lowStockThreshold: settings.lowStockThreshold,
   });
   const [notifications, setNotifications] = useState({
     smsProvider: settings.smsProvider,
@@ -484,7 +487,8 @@ export default function AdminSettingsPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              updateSettings(general);
+              const update = { ...general, wholesaleMOQ: Number(general.wholesaleMOQ) || 1, lowStockThreshold: Number(general.lowStockThreshold) || 1 };
+              updateSettings(update);
               flashSaved();
             }}
             className="max-w-sm space-y-4"
@@ -562,6 +566,49 @@ export default function AdminSettingsPage() {
                   />
                 </div>
               )}
+            </div>
+
+            <div className="border-t border-ink-900/8 pt-4">
+              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
+                Wholesale Minimum Order Quantity (MOQ)
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={general.wholesaleMOQ}
+                onChange={(e) => setGeneral((s) => ({ ...s, wholesaleMOQ: parseInt(e.target.value, 10) || 1 }))}
+                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+              />
+              <p className="mt-1 text-xs text-ink-700/60">
+                Minimum total number of items required in the cart to check out on the wholesale storefront.
+              </p>
+            </div>
+
+            <div className="border-t border-ink-900/8 pt-4">
+              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
+                Low Stock Alert Threshold
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={general.lowStockThreshold}
+                onChange={(e) => setGeneral((s) => ({ ...s, lowStockThreshold: parseInt(e.target.value, 10) || 1 }))}
+                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+              />
+              <p className="mt-1 text-xs text-ink-700/60">
+                Products with stock at or below this number will be flagged as &ldquo;Low Stock&rdquo; in the admin product list.
+              </p>
+            </div>
+
+            <div className="border-t border-ink-900/8 pt-4">
+              <Field
+                label="Store Address"
+                value={general.storeAddress}
+                onChange={(v) => setGeneral((s) => ({ ...s, storeAddress: v }))}
+              />
+              <p className="mt-1 text-xs text-ink-700/60">
+                Shown on invoices and receipts.
+              </p>
             </div>
 
             <SaveButton saved={saved} />

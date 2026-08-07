@@ -16,6 +16,7 @@ type TrackedOrder = {
   createdAt: string;
   lines: CartLine[];
   subtotal: number;
+  isWholesale?: boolean;
 };
 
 export default function TrackPage() {
@@ -134,6 +135,27 @@ function TrackPageInner() {
               <span>Total</span>
               <span>{formatPrice(order.subtotal)}</span>
             </div>
+
+            {order.isWholesale && (
+              <div className="mt-6 flex w-full gap-4">
+                <a
+                  href={`/wholesale/invoice/${order.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 rounded-xl border border-ink-900/15 bg-white px-4 py-3 text-center text-sm font-semibold text-ink-900 hover:bg-cream-100"
+                >
+                  Download Invoice
+                </a>
+                <a
+                  href={`/wholesale/waybill/${order.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 rounded-xl border border-ink-900/15 bg-white px-4 py-3 text-center text-sm font-semibold text-ink-900 hover:bg-cream-100"
+                >
+                  Download Waybill
+                </a>
+              </div>
+            )}
           </div>
         )}
       </section>
