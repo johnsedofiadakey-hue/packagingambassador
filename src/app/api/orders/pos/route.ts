@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { getAdminDb, verifyActiveStaff } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 
 export async function POST(request: Request) {
+  // POS is a staff tool — it creates fulfilled orders, deducts stock, and books
+  // revenue with no payment step, so it must never be callable anonymously.
+  const uid = await verifyActiveStaff(request);
+  if (!uid) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { channel, customer, lines, subtotal, paymentMethod } = body;

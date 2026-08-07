@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * B2B "pay by invoice" checkout — creates an unpaid wholesale order (no Paystack).
@@ -11,6 +12,18 @@ import { getAdminDb } from "@/lib/firebase-admin";
  * invoice/waybill pages, all of which read that one shape.
  */
 export async function POST(req: Request) {
+  // Public, unpaid order creation that deducts stock — rate-limit per IP so it
+  // can't be scripted to spam orders or drain inventory. Tighter than /track's
+  // read limit since this one mutates.
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const limit = rateLimit(`wholesale-invoice:${ip}`, 6, 60 * 60 * 1000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many invoice requests. Please wait a bit before trying again." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+    );
+  }
+
   try {
     const { customer, lines, subtotal } = await req.json();
 

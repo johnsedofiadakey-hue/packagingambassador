@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Search, ShoppingCart, Minus, Plus, Trash2, Receipt, CheckCircle2 } from "lucide-react";
 import { useAdminData } from "@/lib/store";
+import { auth } from "@/lib/firebase";
 import { formatPrice, cn } from "@/lib/utils";
 import type { CartLine } from "@/lib/cart-context";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
@@ -96,9 +97,13 @@ export default function POSPage() {
     if (cart.length === 0) return;
     setIsSubmitting(true);
     try {
+      const token = await auth.currentUser?.getIdToken();
       const res = await fetch("/api/orders/pos", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           channel,
           customer: { name: customerName, phone: customerPhone },

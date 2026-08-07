@@ -1,5 +1,6 @@
 import { initializeApp, getApps, cert, applicationDefault, type App } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
 
 /**
  * Server-only. Never import this from a client component.
@@ -27,4 +28,29 @@ function getAdminApp(): App {
 
 export function getAdminDb() {
   return getFirestore(getAdminApp());
+}
+
+export function getAdminAuth() {
+  return getAuth(getAdminApp());
+}
+
+/**
+ * Server-side guard for staff-only API routes. The admin portal's auth is otherwise
+ * client-side only (a redirect in a layout effect), which does nothing to protect a
+ * server route — anyone can POST to it directly. This verifies the Firebase ID token
+ * in the `Authorization: Bearer <token>` header and confirms the caller has an
+ * *active* staff doc. Returns the uid on success, or null (caller should 401).
+ */
+export async function verifyActiveStaff(request: Request): Promise<string | null> {
+  const header = request.headers.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  if (!token) return null;
+  try {
+    const decoded = await getAdminAuth().verifyIdToken(token);
+    const staffSnap = await getAdminDb().collection("staff").doc(decoded.uid).get();
+    if (!staffSnap.exists || staffSnap.data()?.active !== true) return null;
+    return decoded.uid;
+  } catch {
+    return null;
+  }
 }
