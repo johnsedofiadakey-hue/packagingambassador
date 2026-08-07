@@ -54,7 +54,7 @@ export function ShopCatalogue({
   }, [products, query, category, priceRange, sort, mode, PRICE_RANGES]);
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-10">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-700/50" />
@@ -77,8 +77,32 @@ export function ShopCatalogue({
         </select>
       </div>
 
-      <div className="mt-8 grid gap-10 lg:grid-cols-[220px_1fr]">
-        <aside className="space-y-8">
+      <div className="mt-6 sm:mt-8 grid gap-6 sm:gap-10 lg:grid-cols-[220px_1fr]">
+        <div className="lg:hidden flex overflow-x-auto gap-2 pb-3 scrollbar-none">
+          <button
+            onClick={() => setCategory("all")}
+            className={cn(
+              "shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+              category === "all" ? "bg-amber-500 text-white" : "bg-cream-100 text-ink-800"
+            )}
+          >
+            All
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c.slug}
+              onClick={() => setCategory(c.slug)}
+              className={cn(
+                "shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                category === c.slug ? "bg-amber-500 text-white" : "bg-cream-100 text-ink-800"
+              )}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+
+        <aside className="hidden lg:block space-y-8">
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-widest text-ink-700/70">
               Category
@@ -147,7 +171,7 @@ export function ShopCatalogue({
               <p className="text-ink-700/70">No products match your filters.</p>
             </div>
           ) : (
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
               {filtered.map((product) => (
                 <ProductCard key={product.slug} product={product} mode={mode} onQuickAdd={onQuickAdd} />
               ))}

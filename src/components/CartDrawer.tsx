@@ -275,8 +275,19 @@ function CartDrawerView({
                   const key = lineKey(line);
                   return (
                     <li key={key} className="flex items-center gap-3 py-4">
-                      <div className="flex-1">
-                        <p className="font-display text-sm font-semibold text-ink-900">{line.name}</p>
+                      {line.image ? (
+                        <img
+                          src={line.image}
+                          alt={line.name}
+                          className="h-12 w-12 shrink-0 rounded-xl border border-cream-200 object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-cream-200 bg-cream-100 text-xs text-ink-700/40">
+                          —
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-display text-sm font-semibold text-ink-900">{line.name}</p>
                         <p className="text-xs text-ink-700/70">
                           {line.color} · {line.size} · {formatPrice(line.price)}
                         </p>
@@ -284,27 +295,27 @@ function CartDrawerView({
                       <div className="flex items-center rounded-full border border-cream-200">
                         <button
                           onClick={() => updateQuantity(key, line.quantity - 1)}
-                          className="p-1.5 text-ink-800 hover:text-amber-600"
+                          className="p-2 text-ink-800 hover:text-amber-600 sm:p-1.5"
                           aria-label="Decrease quantity"
                         >
                           <Minus className="h-3.5 w-3.5" />
                         </button>
-                        <span className="w-7 text-center text-sm font-semibold">{line.quantity}</span>
+                        <span className="w-6 text-center text-sm font-semibold">{line.quantity}</span>
                         <button
                           onClick={() => updateQuantity(key, line.quantity + 1)}
-                          className="p-1.5 text-ink-800 hover:text-amber-600"
+                          className="p-2 text-ink-800 hover:text-amber-600 sm:p-1.5"
                           aria-label="Increase quantity"
                         >
                           <Plus className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      <p className="w-20 text-right text-sm font-semibold text-ink-900">
+                      <p className="w-16 text-right text-xs font-semibold text-ink-900 sm:w-20 sm:text-sm">
                         {formatPrice(line.price * line.quantity)}
                       </p>
                       <button
                         onClick={() => removeLine(key)}
                         aria-label="Remove item"
-                        className="text-ink-700/40 hover:text-red-600"
+                        className="rounded-full p-2 text-ink-700/40 transition-colors hover:bg-red-50 hover:text-red-600"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

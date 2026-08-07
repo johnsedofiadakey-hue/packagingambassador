@@ -12,7 +12,11 @@ import { cn } from "@/lib/utils";
 // footer so the top nav stays uncluttered. Search + Cart cover the primary storefront actions.
 const NAV_LINKS = [
   { href: "/", label: "Home" },
+  { href: "/shop", label: "Shop" },
   { href: "/wholesale", label: "Wholesale" },
+  { href: "/track", label: "Track Order" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export function Header() {
@@ -78,7 +82,7 @@ export function Header() {
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
-          {NAV_LINKS.map((link) => (
+          {NAV_LINKS.filter((l) => l.href === "/" || l.href === "/wholesale").map((link) => (
             <Link
               key={link.href}
               href={link.href}
