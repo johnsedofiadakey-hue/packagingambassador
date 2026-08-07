@@ -7,14 +7,22 @@ import { Home, Store, Building2, ShoppingCart, PackageSearch } from "lucide-reac
 import { useCart } from "@/lib/cart-context";
 import { useWholesaleCart } from "@/lib/wholesale-cart-context";
 
-export function MobileTabBar() {
+/**
+ * Presentational dock. Cart data arrives via props because the retail and wholesale carts
+ * live in different providers — a single component can't call both hooks (each throws
+ * outside its own provider tree). Mount the channel-specific wrapper below instead, the
+ * same split used for CartDrawer / WholesaleCartDrawer.
+ */
+function MobileTabBarView({
+  itemCount,
+  openCart,
+  isWholesale,
+}: {
+  itemCount: number;
+  openCart: () => void;
+  isWholesale: boolean;
+}) {
   const pathname = usePathname();
-  const retailCart = useCart();
-  const wholesaleCart = useWholesaleCart();
-
-  const isWholesalePage = pathname.startsWith("/wholesale");
-  const itemCount = isWholesalePage ? wholesaleCart.itemCount : retailCart.itemCount;
-  const openCart = isWholesalePage ? wholesaleCart.openCart : retailCart.openCart;
 
   const TABS = [
     { href: "/", label: "Home", icon: Home },
@@ -24,8 +32,12 @@ export function MobileTabBar() {
     { href: "/track", label: "Track", icon: PackageSearch },
   ] as const;
 
+  const accentColor = isWholesale ? "text-forest-700" : "text-amber-600";
+  const bgActiveColor = isWholesale ? "bg-forest-600/15" : "bg-amber-500/15";
+  const badgeBgColor = isWholesale ? "bg-forest-600" : "bg-amber-500";
+
   return (
-    <div className="fixed inset-x-0 bottom-3 z-50 flex justify-center px-4 md:hidden pointer-events-none">
+    <div className="pointer-events-none fixed inset-x-0 bottom-3 z-50 flex justify-center px-4 md:hidden">
       <nav
         aria-label="Mobile Navigation Dock"
         className="pointer-events-auto flex w-full max-w-sm items-center justify-around rounded-full border border-white/60 bg-white/85 p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.14)] backdrop-blur-2xl transition-all"
@@ -35,10 +47,6 @@ export function MobileTabBar() {
           const { label, icon: Icon } = tab;
           const isCart = "isCart" in tab && tab.isCart;
           const active = !isCart && (tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href));
-
-          const accentColor = isWholesalePage ? "text-forest-700" : "text-amber-600";
-          const bgActiveColor = isWholesalePage ? "bg-forest-600/15" : "bg-amber-500/15";
-          const badgeBgColor = isWholesalePage ? "bg-forest-600" : "bg-amber-500";
 
           const inner = (
             <div className="relative flex flex-col items-center justify-center py-1">
@@ -56,13 +64,13 @@ export function MobileTabBar() {
               >
                 <span className="relative">
                   <Icon
-                    className={`h-5 w-5 transition-colors ${
-                      active ? accentColor : "text-ink-700/60"
-                    }`}
+                    className={`h-5 w-5 transition-colors ${active ? accentColor : "text-ink-700/60"}`}
                     strokeWidth={active ? 2.4 : 1.8}
                   />
                   {isCart && itemCount > 0 && (
-                    <span className={`absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full ${badgeBgColor} px-1 text-[10px] font-bold leading-none text-white shadow-sm`}>
+                    <span
+                      className={`absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full ${badgeBgColor} px-1 text-[10px] font-bold leading-none text-white shadow-sm`}
+                    >
                       {itemCount > 9 ? "9+" : itemCount}
                     </span>
                   )}
@@ -92,4 +100,16 @@ export function MobileTabBar() {
       </nav>
     </div>
   );
+}
+
+/** Retail dock — reads the retail cart. Mount inside CartProvider ((site) layout). */
+export function MobileTabBar() {
+  const { itemCount, openCart } = useCart();
+  return <MobileTabBarView itemCount={itemCount} openCart={openCart} isWholesale={false} />;
+}
+
+/** Wholesale dock — reads the wholesale cart. Mount inside WholesaleCartProvider. */
+export function WholesaleMobileTabBar() {
+  const { itemCount, openCart } = useWholesaleCart();
+  return <MobileTabBarView itemCount={itemCount} openCart={openCart} isWholesale />;
 }
