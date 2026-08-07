@@ -46,11 +46,11 @@ export default function WholesaleProductPage() {
         onAddToCart={(opts) => addToWholesaleCart(product, opts)}
       />
       {related.length > 0 && (
-        <section className="mx-auto max-w-7xl px-6 pb-20">
-          <h2 className="font-display text-2xl font-bold text-ink-900">
-            Related Products
+        <section className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 sm:pb-20">
+          <h2 className="font-display text-xl font-bold text-ink-900 sm:text-2xl">
+            Related Wholesale Products
           </h2>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
             {related.map((p) => (
               <ProductCard key={p.slug} product={p} mode="wholesale" />
             ))}
