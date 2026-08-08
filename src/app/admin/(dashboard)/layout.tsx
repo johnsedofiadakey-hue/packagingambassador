@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "firebase/auth";
 import {
   LayoutDashboard,
@@ -25,22 +25,28 @@ import {
 import { Logo } from "@/components/Logo";
 import { auth } from "@/lib/firebase";
 import { useCurrentStaff } from "@/lib/useCurrentStaff";
+import type { StaffRole } from "@/lib/store";
 
+const ALL_ROLES: StaffRole[] = ["Admin", "Sales Staff", "Inventory Staff"];
+
+// `roles` is the source of truth for BOTH the sidebar (hide links) and the per-page
+// guard below (redirect on direct-URL access). Admin sees everything; the two staff
+// roles get real, distinct scopes — Sales handles selling, Inventory handles stock.
 const NAV = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3, adminOnly: true },
-  { href: "/admin/pos", label: "Point of Sale", icon: Monitor, adminOnly: false },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingBag, adminOnly: false },
-  { href: "/admin/sales", label: "Sales Records", icon: Receipt, adminOnly: false },
-  { href: "/admin/reconciliation", label: "Reconciliation", icon: ShieldCheck, adminOnly: true },
-  { href: "/admin/products", label: "Products", icon: Package, adminOnly: false },
-  { href: "/admin/inventory", label: "Inventory", icon: Boxes, adminOnly: false },
-  { href: "/admin/categories", label: "Categories", icon: FolderTree, adminOnly: false },
-  { href: "/admin/business-customers", label: "Business Customers", icon: Building2, adminOnly: false },
-  { href: "/admin/blog", label: "Blog", icon: Newspaper, adminOnly: true },
-  { href: "/admin/staff", label: "Staff", icon: Users, adminOnly: true },
-  { href: "/admin/activity", label: "Activity Log", icon: History, adminOnly: true },
-  { href: "/admin/settings", label: "Settings", icon: Settings, adminOnly: true },
+  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ALL_ROLES },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart3, roles: ["Admin"] as StaffRole[] },
+  { href: "/admin/pos", label: "Point of Sale", icon: Monitor, roles: ["Admin", "Sales Staff"] as StaffRole[] },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingBag, roles: ALL_ROLES },
+  { href: "/admin/sales", label: "Sales Records", icon: Receipt, roles: ["Admin", "Sales Staff"] as StaffRole[] },
+  { href: "/admin/reconciliation", label: "Reconciliation", icon: ShieldCheck, roles: ["Admin"] as StaffRole[] },
+  { href: "/admin/products", label: "Products", icon: Package, roles: ALL_ROLES },
+  { href: "/admin/inventory", label: "Inventory", icon: Boxes, roles: ["Admin", "Inventory Staff"] as StaffRole[] },
+  { href: "/admin/categories", label: "Categories", icon: FolderTree, roles: ["Admin", "Inventory Staff"] as StaffRole[] },
+  { href: "/admin/business-customers", label: "Business Customers", icon: Building2, roles: ["Admin", "Sales Staff"] as StaffRole[] },
+  { href: "/admin/blog", label: "Blog", icon: Newspaper, roles: ["Admin"] as StaffRole[] },
+  { href: "/admin/staff", label: "Staff", icon: Users, roles: ["Admin"] as StaffRole[] },
+  { href: "/admin/activity", label: "Activity Log", icon: History, roles: ["Admin"] as StaffRole[] },
+  { href: "/admin/settings", label: "Settings", icon: Settings, roles: ["Admin"] as StaffRole[] },
 ];
 
 export default function AdminDashboardLayout({
@@ -49,12 +55,27 @@ export default function AdminDashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, staffDoc, loading } = useCurrentStaff();
   const authorized = Boolean(user && staffDoc?.active);
 
   useEffect(() => {
     if (!loading && !authorized) router.replace("/admin/login");
   }, [loading, authorized, router]);
+
+  // Per-page role guard: hiding a nav link isn't access control — a staff member could
+  // type an admin-only URL directly. Match the current path to its nav item (longest
+  // href prefix, so sub-routes like /admin/pos/receipt/x resolve to /admin/pos) and
+  // bounce to the dashboard (which every role can see) if the role isn't permitted.
+  useEffect(() => {
+    if (loading || !staffDoc) return;
+    const match = NAV.filter(
+      (item) => pathname === item.href || pathname.startsWith(item.href + "/")
+    ).sort((a, b) => b.href.length - a.href.length)[0];
+    if (match && !match.roles.includes(staffDoc.role)) {
+      router.replace("/admin/dashboard");
+    }
+  }, [pathname, loading, staffDoc, router]);
 
   if (loading || !authorized || !staffDoc) {
     return (
@@ -68,8 +89,7 @@ export default function AdminDashboardLayout({
     );
   }
 
-  const isAdmin = staffDoc.role === "Admin";
-  const visibleNav = NAV.filter((item) => !item.adminOnly || isAdmin);
+  const visibleNav = NAV.filter((item) => item.roles.includes(staffDoc.role));
 
   return (
     <div className="flex min-h-screen bg-sand-100">
