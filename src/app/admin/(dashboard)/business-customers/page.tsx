@@ -30,8 +30,8 @@ export default function AdminBusinessCustomersPage() {
           <p>No wholesale orders yet. A customer record appears here after their first order.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-ink-900/8 bg-cream-50">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto rounded-2xl border border-ink-900/8 bg-cream-50">
+          <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr className="border-b border-ink-900/8 text-xs uppercase tracking-wide text-ink-700/50">
                 <th className="px-5 py-3">Business</th>

@@ -91,7 +91,7 @@ export default function AdminActivityPage() {
         </p>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-ink-900/8 bg-cream-50">
-          <table className="w-full text-left text-sm">
+          <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr className="text-xs uppercase tracking-wide text-ink-700/50">
                 <th className="px-5 py-3">When</th>
