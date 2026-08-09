@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronUp, ShoppingBag } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, ShoppingBag, Trash2 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PageLoading } from "@/components/PageLoading";
 import { useAdminData, type Order, type OrderStatus, type WholesaleOrder } from "@/lib/store";
@@ -77,8 +77,15 @@ function toWholesaleRow(order: WholesaleOrder): OrderRow {
 }
 
 export default function AdminOrdersPage() {
-  const { orders, wholesaleOrders, loading, updateOrderStatus, updateWholesaleOrderStatus } =
-    useAdminData();
+  const {
+    orders,
+    wholesaleOrders,
+    loading,
+    updateOrderStatus,
+    updateWholesaleOrderStatus,
+    deleteOrder,
+    deleteWholesaleOrder,
+  } = useAdminData();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [filter, setFilter] = useState<ChannelFilter>("all");
 
@@ -106,6 +113,12 @@ export default function AdminOrdersPage() {
     row.channel === "wholesale"
       ? updateWholesaleOrderStatus(row.id, status)
       : updateOrderStatus(row.id, status);
+
+  const removeRow = (row: OrderRow) => {
+    if (!confirm(`Delete order ${row.id}? This permanently removes it and can't be undone.`)) return;
+    if (expanded === row.id) setExpanded(null);
+    return row.channel === "wholesale" ? deleteWholesaleOrder(row.id) : deleteOrder(row.id);
+  };
 
   return (
     <div>
@@ -226,18 +239,27 @@ export default function AdminOrdersPage() {
                           ))}
                         </select>
                       </td>
-                      <td className="px-5 py-3 text-right">
-                        <button
-                          onClick={() => setExpanded(isOpen ? null : row.id)}
-                          aria-label="Toggle details"
-                          className="rounded-full p-2 text-ink-700 hover:bg-ink-900/5"
-                        >
-                          {isOpen ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </button>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => setExpanded(isOpen ? null : row.id)}
+                            aria-label="Toggle details"
+                            className="rounded-full p-2 text-ink-700 hover:bg-ink-900/5"
+                          >
+                            {isOpen ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => removeRow(row)}
+                            aria-label={`Delete order ${row.id}`}
+                            className="rounded-full p-2 text-ink-700/50 hover:bg-red-50 hover:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     {isOpen && (

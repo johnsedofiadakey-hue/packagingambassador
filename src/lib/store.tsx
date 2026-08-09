@@ -327,6 +327,8 @@ type AdminDataContextValue = {
   addOrder: (input: Omit<Order, "id" | "createdAt" | "status">) => Promise<Order>;
   updateOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
   updateWholesaleOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
+  deleteOrder: (id: string) => Promise<void>;
+  deleteWholesaleOrder: (id: string) => Promise<void>;
 
   addStaff: (input: {
     name: string;
@@ -549,6 +551,16 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
     logActivity("wholesale_order_status_changed", { orderId: id, status });
   };
 
+  const deleteOrder = async (id: string) => {
+    await deleteDoc(doc(db, "orders", id));
+    logActivity("order_deleted", { orderId: id });
+  };
+
+  const deleteWholesaleOrder = async (id: string) => {
+    await deleteDoc(doc(db, "wholesaleOrders", id));
+    logActivity("wholesale_order_deleted", { orderId: id });
+  };
+
   const addStaff = async (input: {
     name: string;
     email: string;
@@ -634,6 +646,8 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       addOrder,
       updateOrderStatus,
       updateWholesaleOrderStatus,
+      deleteOrder,
+      deleteWholesaleOrder,
       addStaff,
       updateStaff,
       removeStaff,

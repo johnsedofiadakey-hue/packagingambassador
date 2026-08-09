@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { Plus, Trash2, X } from "lucide-react";
+import { ChevronDown, Plus, Trash2, X } from "lucide-react";
 import { storage } from "@/lib/firebase";
 import type { Category, ColorVariant, Product } from "@/lib/products";
 
 const BADGES = ["", "Best Seller", "Eco-Friendly", "New"] as const;
+
+const inputCls =
+  "mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40";
+const labelCls = "text-xs font-semibold uppercase tracking-wide text-ink-700/70";
 
 type FormValues = {
   name: string;
@@ -18,8 +22,6 @@ type FormValues = {
   wholesaleMinQty: string;
   unit: string;
   stock: string;
-  rating: string;
-  reviewCount: string;
   description: string;
   colors: ColorVariant[];
   sizes: string;
@@ -38,14 +40,25 @@ function toFormValues(product?: Product, defaultCategory?: string): FormValues {
     wholesaleMinQty: product?.wholesaleMinQty ? String(product.wholesaleMinQty) : "",
     unit: product?.unit ?? "",
     stock: product ? String(product.stock) : "",
-    rating: product ? String(product.rating) : "5",
-    reviewCount: product ? String(product.reviewCount) : "0",
     description: product?.description ?? "",
     colors: product?.colors ?? [],
     sizes: product?.sizes.join(", ") ?? "",
     specs: product?.specs.join("\n") ?? "",
     image: product?.image,
   };
+}
+
+/** Collapsible "advanced" section — keeps the initial form short. */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <details className="group rounded-xl border border-cream-200 bg-white/50">
+      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-ink-800 [&::-webkit-details-marker]:hidden">
+        <span>{title}</span>
+        <ChevronDown className="h-4 w-4 text-ink-700/50 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="space-y-4 px-4 pb-4 pt-1">{children}</div>
+    </details>
+  );
 }
 
 export function ProductForm({
@@ -59,9 +72,7 @@ export function ProductForm({
   onCancel: () => void;
   onSubmit: (values: Omit<Product, "slug"> & { slug?: string }) => Promise<void>;
 }) {
-  const [values, setValues] = useState<FormValues>(() =>
-    toFormValues(product, categories[0]?.slug)
-  );
+  const [values, setValues] = useState<FormValues>(() => toFormValues(product, categories[0]?.slug));
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,17 +81,12 @@ export function ProductForm({
     setValues((prev) => ({ ...prev, [key]: value }));
 
   const addColor = () =>
-    setValues((prev) => ({
-      ...prev,
-      colors: [...prev.colors, { name: "", hex: "#c8a373" }],
-    }));
-
+    setValues((prev) => ({ ...prev, colors: [...prev.colors, { name: "", hex: "#c8a373" }] }));
   const updateColor = (index: number, patch: Partial<ColorVariant>) =>
     setValues((prev) => ({
       ...prev,
       colors: prev.colors.map((c, i) => (i === index ? { ...c, ...patch } : c)),
     }));
-
   const removeColor = (index: number) =>
     setValues((prev) => ({ ...prev, colors: prev.colors.filter((_, i) => i !== index) }));
 
@@ -118,12 +124,11 @@ export function ProductForm({
         wholesaleMinQty: Number(values.wholesaleMinQty) || undefined,
         unit: values.unit.trim() || "unit",
         stock: Number(values.stock) || 0,
-        rating: Number(values.rating) || 0,
-        reviewCount: Number(values.reviewCount) || 0,
+        // Rating / review count aren't shop-owner inputs — keep any existing values, else sensible defaults.
+        rating: product?.rating ?? 5,
+        reviewCount: product?.reviewCount ?? 0,
         description: values.description.trim(),
-        colors: values.colors
-          .map((c) => ({ name: c.name.trim(), hex: c.hex }))
-          .filter((c) => c.name),
+        colors: values.colors.map((c) => ({ name: c.name.trim(), hex: c.hex })).filter((c) => c.name),
         sizes: values.sizes
           .split(",")
           .map((s) => s.trim())
@@ -144,9 +149,12 @@ export function ProductForm({
     <div className="fixed inset-0 z-50 flex justify-end bg-ink-900/30 backdrop-blur-sm">
       <div className="flex h-full w-full max-w-lg flex-col overflow-y-auto border-l border-white/40 bg-white/75 shadow-xl backdrop-blur-2xl">
         <div className="flex items-center justify-between border-b border-white/40 px-6 py-4">
-          <h2 className="font-display text-lg font-bold text-ink-900">
-            {product ? "Edit Product" : "Add Product"}
-          </h2>
+          <div>
+            <h2 className="font-display text-lg font-bold text-ink-900">
+              {product ? "Edit Product" : "Add Product"}
+            </h2>
+            <p className="text-xs text-ink-700/60">Only name, category, price and stock are required.</p>
+          </div>
           <button
             onClick={onCancel}
             aria-label="Close"
@@ -157,18 +165,13 @@ export function ProductForm({
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 space-y-5 px-6 py-6">
+          {/* --- Essentials (always visible) --- */}
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-              Photo
-            </label>
+            <label className={labelCls}>Photo</label>
             <div className="mt-2 flex items-center gap-4">
               {values.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={values.image}
-                  alt="Preview"
-                  className="h-20 w-20 rounded-xl object-cover"
-                />
+                <img src={values.image} alt="Preview" className="h-20 w-20 rounded-xl object-cover" />
               ) : (
                 <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-sand-200 text-xs text-ink-700/50">
                   No photo
@@ -182,63 +185,34 @@ export function ProductForm({
               />
             </div>
             <p className="mt-1 text-xs text-ink-700/50">
-              Uploads to Firebase Storage — leave blank to fall back to illustrated category art.
+              Optional — leave blank to use the illustrated category art.
             </p>
           </div>
 
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-              Product Name
-            </label>
-            <input
+            <label className={labelCls}>Product Name</label>
+            <input required value={values.name} onChange={(e) => set("name", e.target.value)} className={inputCls} />
+          </div>
+
+          <div>
+            <label className={labelCls}>Category</label>
+            <select
               required
-              value={values.name}
-              onChange={(e) => set("name", e.target.value)}
-              className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
-            />
+              value={values.category}
+              onChange={(e) => set("category", e.target.value)}
+              className={inputCls}
+            >
+              {categories.map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-                Category
-              </label>
-              <select
-                required
-                value={values.category}
-                onChange={(e) => set("category", e.target.value)}
-                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
-              >
-                {categories.map((c) => (
-                  <option key={c.slug} value={c.slug}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-                Badge
-              </label>
-              <select
-                value={values.badge}
-                onChange={(e) => set("badge", e.target.value as FormValues["badge"])}
-                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
-              >
-                {BADGES.map((b) => (
-                  <option key={b} value={b}>
-                    {b || "None"}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-                Price (GH₵)
-              </label>
+              <label className={labelCls}>Price (GH₵)</label>
               <input
                 required
                 type="number"
@@ -246,198 +220,169 @@ export function ProductForm({
                 step="0.01"
                 value={values.price}
                 onChange={(e) => set("price", e.target.value)}
-                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-                Compare-at Price
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Optional — shows as a sale"
-                value={values.compareAtPrice}
-                onChange={(e) => set("compareAtPrice", e.target.value)}
-                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-                Wholesale Price (GH₵)
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Blank — not sold wholesale"
-                value={values.wholesalePrice}
-                onChange={(e) => set("wholesalePrice", e.target.value)}
-                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-forest-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest-600/40"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-                Wholesale Min. Order Qty
-              </label>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                placeholder="Optional — defaults to 1"
-                value={values.wholesaleMinQty}
-                onChange={(e) => set("wholesaleMinQty", e.target.value)}
-                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-forest-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest-600/40"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-                Unit
-              </label>
-              <input
-                required
-                placeholder="50 pcs"
-                value={values.unit}
-                onChange={(e) => set("unit", e.target.value)}
-                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-                Stock
-              </label>
+              <label className={labelCls}>Stock</label>
               <input
                 required
                 type="number"
                 min="0"
                 value={values.stock}
                 onChange={(e) => set("stock", e.target.value)}
-                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-                Rating
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="5"
-                step="0.1"
-                value={values.rating}
-                onChange={(e) => set("rating", e.target.value)}
-                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-                Review Count
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={values.reviewCount}
-                onChange={(e) => set("reviewCount", e.target.value)}
-                className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                className={inputCls}
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-              Description
-            </label>
+            <label className={labelCls}>Description</label>
             <textarea
-              required
               rows={3}
+              placeholder="A short description shown on the product page."
               value={values.description}
               onChange={(e) => set("description", e.target.value)}
-              className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+              className={inputCls}
             />
           </div>
 
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-                Color Variants
-              </label>
-              <button
-                type="button"
-                onClick={addColor}
-                className="flex items-center gap-1 text-xs font-semibold text-amber-600 hover:underline"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add Color
-              </button>
+          {/* --- Pricing & wholesale (collapsed) --- */}
+          <Section title="Pricing & wholesale (optional)">
+            <div>
+              <label className={labelCls}>Compare-at Price</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Higher than price — shows a strikethrough sale"
+                value={values.compareAtPrice}
+                onChange={(e) => set("compareAtPrice", e.target.value)}
+                className={inputCls}
+              />
             </div>
-            <div className="mt-2 space-y-2">
-              {values.colors.map((c, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={c.hex}
-                    onChange={(e) => updateColor(i, { hex: e.target.value })}
-                    className="h-9 w-11 shrink-0 cursor-pointer rounded-lg border border-cream-200 bg-white p-1"
-                  />
-                  <input
-                    placeholder="Color name (e.g. Forest Green)"
-                    value={c.name}
-                    onChange={(e) => updateColor(i, { name: e.target.value })}
-                    className="w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeColor(i)}
-                    aria-label="Remove color"
-                    className="shrink-0 rounded-full p-2 text-ink-700/50 hover:bg-red-50 hover:text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-              {values.colors.length === 0 && (
-                <p className="text-xs text-ink-700/50">No color variants yet — optional.</p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>Wholesale Price</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Blank = not sold wholesale"
+                  value={values.wholesalePrice}
+                  onChange={(e) => set("wholesalePrice", e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Min. Wholesale Qty</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="Defaults to 1"
+                  value={values.wholesaleMinQty}
+                  onChange={(e) => set("wholesaleMinQty", e.target.value)}
+                  className={inputCls}
+                />
+              </div>
             </div>
-          </div>
+          </Section>
 
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-              Sizes (comma-separated)
-            </label>
-            <input
-              placeholder="Small, Medium, Large"
-              value={values.sizes}
-              onChange={(e) => set("sizes", e.target.value)}
-              className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
-            />
-          </div>
+          {/* --- Variants & details (collapsed) --- */}
+          <Section title="Variants & details (optional)">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>Badge</label>
+                <select
+                  value={values.badge}
+                  onChange={(e) => set("badge", e.target.value as FormValues["badge"])}
+                  className={inputCls}
+                >
+                  {BADGES.map((b) => (
+                    <option key={b} value={b}>
+                      {b || "None"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Unit / Pack</label>
+                <input
+                  placeholder="e.g. 50 pcs"
+                  value={values.unit}
+                  onChange={(e) => set("unit", e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+            </div>
 
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
-              Specs (one per line)
-            </label>
-            <textarea
-              rows={3}
-              value={values.specs}
-              onChange={(e) => set("specs", e.target.value)}
-              className="mt-2 w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
-            />
-          </div>
+            <div>
+              <label className={labelCls}>Sizes (comma-separated)</label>
+              <input
+                placeholder="Small, Medium, Large"
+                value={values.sizes}
+                onChange={(e) => set("sizes", e.target.value)}
+                className={inputCls}
+              />
+            </div>
 
-          {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-          )}
+            <div>
+              <div className="flex items-center justify-between">
+                <label className={labelCls}>Color Variants</label>
+                <button
+                  type="button"
+                  onClick={addColor}
+                  className="flex items-center gap-1 text-xs font-semibold text-amber-600 hover:underline"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Color
+                </button>
+              </div>
+              <div className="mt-2 space-y-2">
+                {values.colors.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={c.hex}
+                      onChange={(e) => updateColor(i, { hex: e.target.value })}
+                      className="h-9 w-11 shrink-0 cursor-pointer rounded-lg border border-cream-200 bg-white p-1"
+                    />
+                    <input
+                      placeholder="Color name (e.g. Forest Green)"
+                      value={c.name}
+                      onChange={(e) => updateColor(i, { name: e.target.value })}
+                      className="w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeColor(i)}
+                      aria-label="Remove color"
+                      className="shrink-0 rounded-full p-2 text-ink-700/50 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                {values.colors.length === 0 && (
+                  <p className="text-xs text-ink-700/50">No color variants — optional.</p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>Specs (one per line)</label>
+              <textarea
+                rows={3}
+                placeholder={"Food-safe\nBiodegradable\n300gsm kraft"}
+                value={values.specs}
+                onChange={(e) => set("specs", e.target.value)}
+                className={inputCls}
+              />
+            </div>
+          </Section>
+
+          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
           <div className="flex gap-3 pt-2">
             <button
