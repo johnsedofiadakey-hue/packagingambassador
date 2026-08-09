@@ -9,6 +9,18 @@ export type ColorVariant = {
   hex: string;
 };
 
+/**
+ * A selectable size. `price` / `wholesalePrice` are optional per-size overrides — when unset,
+ * the size uses the product's base `price` / `wholesalePrice`. Legacy products stored sizes as
+ * a plain string[]; `normalizeSizes()` (utils) maps those to `{ name }` at read time, so this
+ * change is backward-compatible with no data migration.
+ */
+export type SizeOption = {
+  name: string;
+  price?: number;
+  wholesalePrice?: number;
+};
+
 export type Product = {
   slug: string;
   name: string;
@@ -32,7 +44,7 @@ export type Product = {
   lowStockAlerted?: boolean;
   description: string;
   colors: ColorVariant[];
-  sizes: string[];
+  sizes: SizeOption[];
   specs: string[];
   image?: string;
 };
@@ -64,7 +76,7 @@ export const products: Product[] = [
       { name: "Forest Green", hex: "#405c26" },
       { name: "Clay", hex: "#b96a45" },
     ],
-    sizes: ["8oz", "12oz", "16oz"],
+    sizes: [{ name: "8oz" }, { name: "12oz" }, { name: "16oz" }],
     specs: [
       "Food-safe inner lining",
       "Stackable design",
@@ -90,7 +102,7 @@ export const products: Product[] = [
       { name: "Forest Green", hex: "#405c26" },
       { name: "Clay", hex: "#b96a45" },
     ],
-    sizes: ["Small", "Medium", "Large"],
+    sizes: [{ name: "Small" }, { name: "Medium" }, { name: "Large" }],
     specs: [
       "Rigid double-wall construction",
       "Foldable, flat-pack shipping",
@@ -115,7 +127,7 @@ export const products: Product[] = [
       { name: "Natural Kraft", hex: "#c8a373" },
       { name: "Forest Green", hex: "#405c26" },
     ],
-    sizes: ["Small", "Medium", "Large"],
+    sizes: [{ name: "Small" }, { name: "Medium" }, { name: "Large" }],
     specs: [
       "Reinforced twisted handles",
       "Wide flat base",
@@ -140,7 +152,7 @@ export const products: Product[] = [
       { name: "Natural Kraft", hex: "#c8a373" },
       { name: "Clear", hex: "#e7e2d8" },
     ],
-    sizes: ["500ml", "750ml", "1000ml"],
+    sizes: [{ name: "500ml" }, { name: "750ml" }, { name: "1000ml" }],
     specs: [
       "Snap-fit leak-resistant lid",
       "Microwave & freezer safe",
@@ -161,7 +173,7 @@ export const products: Product[] = [
     description:
       "Protective bubble wrap for shipping fragile items. Cushions against impact and vibration in transit.",
     colors: [{ name: "Clear", hex: "#e7e2d8" }],
-    sizes: ["30cm width", "50cm width"],
+    sizes: [{ name: "30cm width" }, { name: "50cm width" }],
     specs: [
       "Cushions fragile items",
       "5m per roll",
@@ -187,7 +199,7 @@ export const products: Product[] = [
       { name: "Forest Green", hex: "#405c26" },
       { name: "Clay", hex: "#b96a45" },
     ],
-    sizes: ["8oz", "12oz", "16oz"],
+    sizes: [{ name: "8oz" }, { name: "12oz" }, { name: "16oz" }],
     specs: [
       "Double-wall insulation, no sleeve needed",
       "Food-safe inner lining",

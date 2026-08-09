@@ -201,7 +201,8 @@ export function parseProductsCsv(text: string, categories: Category[]): ImportRo
         reviewCount,
         description: get(idx.description),
         colors: parseColorVariants(get(idx.colors)),
-        sizes: splitList(get(idx.sizes)),
+        // CSV sizes are names only (all at the base price); per-size prices are set in the admin form.
+        sizes: splitList(get(idx.sizes)).map((name) => ({ name })),
         specs: splitList(get(idx.specs)),
       },
     });

@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import type { Product } from "@/lib/products";
+import { sizePrice } from "@/lib/utils";
 
 export type CartLine = {
   slug: string;
@@ -81,7 +82,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           slug: product.slug,
           name: product.name,
           image: product.image || undefined,
-          price: product.price,
+          price: sizePrice(product, opts.size, "retail"),
           unit: product.unit,
           size: opts.size,
           color: opts.color,

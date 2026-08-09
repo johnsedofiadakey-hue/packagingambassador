@@ -5,7 +5,7 @@ import { Plus, Star } from "lucide-react";
 import { BADGE_STYLES, type Product } from "@/lib/products";
 import { ProductArt } from "@/components/ProductArt";
 import { MotionLink } from "@/components/MotionLink";
-import { formatPrice, getDiscountPercent, getDisplayPrice, type PriceMode } from "@/lib/utils";
+import { formatPrice, getDiscountPercent, priceRange, type PriceMode } from "@/lib/utils";
 
 export function ProductCard({
   product,
@@ -18,7 +18,7 @@ export function ProductCard({
 }) {
   // Compare-at pricing is a retail promo concept — wholesale pricing is already the bulk rate.
   const discount = mode === "wholesale" ? null : getDiscountPercent(product);
-  const price = getDisplayPrice(product, mode);
+  const range = priceRange(product, mode);
   const href = mode === "wholesale" ? `/wholesale/product/${product.slug}` : `/product/${product.slug}`;
   const accent = mode === "wholesale" ? "bg-forest-600 hover:bg-forest-700" : "bg-amber-500 hover:bg-amber-600";
   const outOfStock = product.stock <= 0;
@@ -88,7 +88,9 @@ export function ProductCard({
                 {formatPrice(product.compareAtPrice!)}
               </span>
             )}
-            <span className="font-display text-sm font-bold sm:text-xl">{formatPrice(price)}</span>
+            <span className="font-display text-sm font-bold sm:text-xl">
+              {range.varies ? `From ${formatPrice(range.min)}` : formatPrice(range.min)}
+            </span>
             <span className="text-[10px] sm:text-sm text-ink-700/70">per {product.unit}</span>
           </div>
           {onQuickAdd && (

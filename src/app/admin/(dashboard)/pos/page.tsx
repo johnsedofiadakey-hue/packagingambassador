@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { Search, ShoppingCart, Minus, Plus, Trash2, Receipt, CheckCircle2 } from "lucide-react";
 import { useAdminData } from "@/lib/store";
 import { auth } from "@/lib/firebase";
-import { formatPrice, cn } from "@/lib/utils";
+import { formatPrice, cn, normalizeSizes, sizePrice } from "@/lib/utils";
 import type { CartLine } from "@/lib/cart-context";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PageLoading } from "@/components/PageLoading";
@@ -40,12 +40,9 @@ export default function POSPage() {
   }, [cart]);
 
   const handleAddToCart = (product: any) => {
-    const price = channel === "wholesale" && product.wholesalePrice !== undefined 
-      ? product.wholesalePrice 
-      : product.price;
-
-    const defaultSize = product.sizes?.[0] || "Standard";
+    const defaultSize = normalizeSizes(product.sizes)[0]?.name || "Standard";
     const defaultColor = product.colors?.[0]?.name || "Default";
+    const price = sizePrice(product, defaultSize, channel === "wholesale" ? "wholesale" : "retail");
     
     setCart((prev) => {
       const existingIdx = prev.findIndex(
@@ -180,10 +177,12 @@ export default function POSPage() {
           <div className="flex-1 overflow-y-auto p-4">
             <div className="grid grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredProducts.map(product => {
-                const price = channel === "wholesale" && product.wholesalePrice !== undefined 
-                  ? product.wholesalePrice 
-                  : product.price;
-                
+                const price = sizePrice(
+                  product,
+                  normalizeSizes(product.sizes)[0]?.name ?? "",
+                  channel === "wholesale" ? "wholesale" : "retail"
+                );
+
                 return (
                   <button
                     key={product.slug}

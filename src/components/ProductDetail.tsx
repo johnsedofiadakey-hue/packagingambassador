@@ -5,7 +5,14 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { CheckCircle2, Minus, Plus, ShoppingCart, Star, Truck } from "lucide-react";
 import { ProductArt } from "@/components/ProductArt";
-import { formatPrice, getDiscountPercent, getDisplayPrice, type PriceMode } from "@/lib/utils";
+import {
+  formatPrice,
+  getDiscountPercent,
+  normalizeSizes,
+  priceRange,
+  sizePrice,
+  type PriceMode,
+} from "@/lib/utils";
 import { BADGE_STYLES, type Product } from "@/lib/products";
 
 /**
@@ -25,12 +32,15 @@ export function ProductDetail({
 }) {
   const isWholesale = mode === "wholesale";
   const minQty = isWholesale ? (product.wholesaleMinQty ?? 1) : 1;
-  const price = getDisplayPrice(product, mode);
   const discount = isWholesale ? null : getDiscountPercent(product);
+  const sizes = normalizeSizes(product.sizes);
   const [color, setColor] = useState((product.colors || [])[0]?.name ?? "");
-  const [size, setSize] = useState((product.sizes || [])[0] ?? "");
+  const [size, setSize] = useState(sizes[0]?.name ?? "");
   const [quantity, setQuantity] = useState(minQty);
   const [justAdded, setJustAdded] = useState(false);
+  // Reactive — recomputes as the shopper picks a size, so the price updates live.
+  const price = sizePrice(product, size, mode);
+  const range = priceRange(product, mode);
 
   const handleAdd = () => {
     onAddToCart({ color, size, quantity });
@@ -133,19 +143,25 @@ export function ProductDetail({
           <div className="mt-6">
             <p className="text-sm font-semibold text-ink-900">Size</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {(product.sizes || []).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSize(s)}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                    size === s
-                      ? "bg-amber-500 text-white"
-                      : "bg-cream-100 text-ink-800 hover:bg-cream-200"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
+              {sizes.map((s) => {
+                const active = size === s.name;
+                return (
+                  <button
+                    key={s.name}
+                    onClick={() => setSize(s.name)}
+                    className={`flex flex-col items-center rounded-2xl px-4 py-2 text-sm font-medium transition-colors ${
+                      active ? "bg-amber-500 text-white" : "bg-cream-100 text-ink-800 hover:bg-cream-200"
+                    }`}
+                  >
+                    <span>{s.name}</span>
+                    {range.varies && (
+                      <span className={active ? "text-xs text-white/85" : "text-xs text-ink-700/60"}>
+                        {formatPrice(sizePrice(product, s.name, mode))}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

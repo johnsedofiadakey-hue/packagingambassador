@@ -11,6 +11,7 @@ import {
 import type { Product } from "@/lib/products";
 import type { CartLine } from "@/lib/cart-context";
 import { lineKey } from "@/lib/cart-context";
+import { sizePrice } from "@/lib/utils";
 
 type WholesaleCartContextValue = {
   lines: CartLine[];
@@ -74,7 +75,7 @@ export function WholesaleCartProvider({ children }: { children: React.ReactNode 
             slug: product.slug,
             name: product.name,
             image: product.image || undefined,
-            price: product.wholesalePrice ?? product.price,
+            price: sizePrice(product, opts.size, "wholesale"),
             unit: product.unit,
             size: opts.size,
             color: opts.color,

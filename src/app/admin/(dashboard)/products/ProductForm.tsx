@@ -4,7 +4,8 @@ import { useState } from "react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { ChevronDown, Plus, Trash2, X } from "lucide-react";
 import { storage } from "@/lib/firebase";
-import type { Category, ColorVariant, Product } from "@/lib/products";
+import { normalizeSizes } from "@/lib/utils";
+import type { Category, ColorVariant, Product, SizeOption } from "@/lib/products";
 
 const BADGES = ["", "Best Seller", "Eco-Friendly", "New"] as const;
 
@@ -24,10 +25,13 @@ type FormValues = {
   stock: string;
   description: string;
   colors: ColorVariant[];
-  sizes: string;
+  sizes: SizeRow[];
   specs: string;
   image?: string;
 };
+
+// Price is a string here so the numeric input can be empty (= "use the base price").
+type SizeRow = { name: string; price: string };
 
 function toFormValues(product?: Product, defaultCategory?: string): FormValues {
   return {
@@ -42,7 +46,10 @@ function toFormValues(product?: Product, defaultCategory?: string): FormValues {
     stock: product ? String(product.stock) : "",
     description: product?.description ?? "",
     colors: product?.colors ?? [],
-    sizes: product?.sizes.join(", ") ?? "",
+    sizes: normalizeSizes(product?.sizes).map((s) => ({
+      name: s.name,
+      price: typeof s.price === "number" ? String(s.price) : "",
+    })),
     specs: product?.specs.join("\n") ?? "",
     image: product?.image,
   };
@@ -90,6 +97,15 @@ export function ProductForm({
   const removeColor = (index: number) =>
     setValues((prev) => ({ ...prev, colors: prev.colors.filter((_, i) => i !== index) }));
 
+  const addSize = () => setValues((prev) => ({ ...prev, sizes: [...prev.sizes, { name: "", price: "" }] }));
+  const updateSize = (index: number, patch: Partial<SizeRow>) =>
+    setValues((prev) => ({
+      ...prev,
+      sizes: prev.sizes.map((s, i) => (i === index ? { ...s, ...patch } : s)),
+    }));
+  const removeSize = (index: number) =>
+    setValues((prev) => ({ ...prev, sizes: prev.sizes.filter((_, i) => i !== index) }));
+
   const handleImage = (file: File | undefined) => {
     if (!file) return;
     setImageFile(file);
@@ -130,9 +146,13 @@ export function ProductForm({
         description: values.description.trim(),
         colors: values.colors.map((c) => ({ name: c.name.trim(), hex: c.hex })).filter((c) => c.name),
         sizes: values.sizes
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
+          .map((s): SizeOption | null => {
+            const name = s.name.trim();
+            if (!name) return null;
+            const price = Number(s.price);
+            return price > 0 ? { name, price } : { name };
+          })
+          .filter((s): s is SizeOption => s !== null),
         specs: values.specs
           .split("\n")
           .map((s) => s.trim())
@@ -318,13 +338,53 @@ export function ProductForm({
             </div>
 
             <div>
-              <label className={labelCls}>Sizes (comma-separated)</label>
-              <input
-                placeholder="Small, Medium, Large"
-                value={values.sizes}
-                onChange={(e) => set("sizes", e.target.value)}
-                className={inputCls}
-              />
+              <div className="flex items-center justify-between">
+                <label className={labelCls}>Sizes &amp; prices</label>
+                <button
+                  type="button"
+                  onClick={addSize}
+                  className="flex items-center gap-1 text-xs font-semibold text-amber-600 hover:underline"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Size
+                </button>
+              </div>
+              <div className="mt-2 space-y-2">
+                {values.sizes.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      placeholder="Size (e.g. Small)"
+                      value={s.name}
+                      onChange={(e) => updateSize(i, { name: e.target.value })}
+                      className="w-full rounded-xl border border-cream-200 bg-white px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Price"
+                      value={s.price}
+                      onChange={(e) => updateSize(i, { price: e.target.value })}
+                      className="w-24 shrink-0 rounded-xl border border-cream-200 bg-white px-3 py-2.5 text-sm focus:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeSize(i)}
+                      aria-label="Remove size"
+                      className="shrink-0 rounded-full p-2 text-ink-700/50 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                {values.sizes.length === 0 && (
+                  <p className="text-xs text-ink-700/50">No sizes yet — optional.</p>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-ink-700/50">
+                Each size can carry its own price — the storefront updates live when the customer
+                picks one. Leave a price blank to use the main price above.
+              </p>
             </div>
 
             <div>
