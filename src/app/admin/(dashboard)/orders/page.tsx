@@ -151,8 +151,8 @@ export default function AdminOrdersPage() {
           <p>No orders yet. Orders placed at checkout on the storefront will show up here.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-ink-900/8 bg-cream-50">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto rounded-2xl border border-ink-900/8 bg-cream-50">
+          <table className="w-full min-w-[760px] text-left text-sm">
             <thead>
               <tr className="border-b border-ink-900/8 text-xs uppercase tracking-wide text-ink-700/50">
                 <th className="px-5 py-3">Order</th>

@@ -90,7 +90,84 @@ export default function InventoryPage() {
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-ink-900/8 bg-cream-50">
+      {/* Mobile cards — touch-friendly stacked layout */}
+      <div className="space-y-3 md:hidden">
+        {rows.map((product) => {
+          const draft = drafts[product.slug] ?? String(product.stock);
+          const draftNum = parseInt(draft, 10);
+          const dirty = String(product.stock) !== draft && Number.isFinite(draftNum);
+          const status = product.stock <= 0 ? "out" : product.stock <= threshold ? "low" : "ok";
+          return (
+            <div key={product.slug} className="rounded-2xl border border-ink-900/8 bg-cream-50 p-4">
+              <div className="flex items-center gap-3">
+                {product.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={product.image} alt={product.name} className="h-11 w-11 rounded-lg object-cover" />
+                ) : (
+                  <div className="h-11 w-11 rounded-lg bg-sand-200" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-ink-900">{product.name}</p>
+                  <p className="text-xs text-ink-700/60">{product.categoryLabel}</p>
+                </div>
+                <div className="text-right">
+                  <span
+                    className={cn(
+                      "text-lg font-bold",
+                      status === "out" && "text-red-600",
+                      status === "low" && "text-amber-600",
+                      status === "ok" && "text-ink-900"
+                    )}
+                  >
+                    {product.stock}
+                  </span>
+                  {status !== "ok" && (
+                    <p className={cn("text-[10px] font-semibold", status === "out" ? "text-red-600" : "text-amber-700")}>
+                      {status === "out" ? "Out of stock" : "Low"}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  onClick={() => save(product, product.stock + 50)}
+                  disabled={savingSlug === product.slug}
+                  className="rounded-xl border border-ink-900/10 px-3 py-2.5 text-sm font-semibold text-ink-700 hover:bg-forest-600/10 hover:text-forest-700 disabled:opacity-50"
+                >
+                  +50
+                </button>
+                <button
+                  onClick={() => save(product, product.stock + 100)}
+                  disabled={savingSlug === product.slug}
+                  className="rounded-xl border border-ink-900/10 px-3 py-2.5 text-sm font-semibold text-ink-700 hover:bg-forest-600/10 hover:text-forest-700 disabled:opacity-50"
+                >
+                  +100
+                </button>
+                <input
+                  type="number"
+                  min="0"
+                  value={draft}
+                  onChange={(e) => setDrafts((d) => ({ ...d, [product.slug]: e.target.value }))}
+                  className="w-full rounded-xl border border-cream-200 bg-white px-3 py-2.5 text-sm focus:border-amber-500 focus:outline-none"
+                />
+                <button
+                  onClick={() => save(product, draftNum)}
+                  disabled={!dirty || savingSlug === product.slug}
+                  className="shrink-0 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-40"
+                >
+                  {savingSlug === product.slug ? "…" : "Set"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+        {rows.length === 0 && (
+          <p className="py-10 text-center text-sm text-ink-700/50">No products match your search.</p>
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden overflow-x-auto rounded-2xl border border-ink-900/8 bg-cream-50 md:block">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-ink-900/8 text-xs uppercase tracking-wide text-ink-700/60">
             <tr>
