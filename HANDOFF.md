@@ -1,9 +1,9 @@
 # Packaging Ambassadors — Project Handoff
 
-Last updated: 2026-08-07 (blueprint feature build + POS merge, hero video, footer redesign, theme/scroll
-fixes). Read this before touching the codebase — it explains what exists, why it's built the way it is,
-and what's still missing. This is a living document; keep it updated as the project changes so the next
-session (human or AI) doesn't have to reconstruct context from scratch.
+Last updated: 2026-08-09 (per-size pricing, CI build guards, staff-console redesign — granular
+permissions + PWA + POS-first + touch/mobile). Read this before touching the codebase — it explains what
+exists, why it's built the way it is, and what's still missing. This is a living document; keep it updated
+as the project changes so the next session (human or AI) doesn't have to reconstruct context from scratch.
 
 ## What this is
 
@@ -660,3 +660,43 @@ root (so `node_modules` resolves), run it with `node`, delete it immediately —
       paused the off-screen hero video, and hardened Lenis resize (added a `ResizeObserver` on the scroll
       content + a window `load` pass, since the MutationObserver only catches DOM insertions, not
       image/video/font-load height growth — see the Lenis notes under Design System).
+16. **CI guards, per-size pricing, order delete, simpler product form, and the staff-console redesign**
+    (2026-08-09). Another Antigravity push (mobile UI upgrades + a "floating nav dock") had again broken
+    the build — the dock called BOTH `useCart()` and `useWholesaleCart()` in one component mounted in
+    both layouts, crashing prerender since each hook throws outside its provider. Fixed by splitting
+    `MobileTabBar` into a presentational view + per-channel wrappers (`MobileTabBar` / `WholesaleMobileTabBar`),
+    the same pattern as CartDrawer. Then, to stop this recurring:
+    - **Build guards**: `.github/workflows/ci.yml` (runs `tsc` + `next build` on every push/PR, catches any
+      pusher) and `.githooks/pre-push` (same check locally; enable with `git config core.hooksPath .githooks`).
+      See Deployment. Neither blocks the App-Hosting deploy, but they make a bad commit fast and attributable.
+    - **Per-size pricing**: `Product.sizes` went from `string[]` to `SizeOption[] { name, price?, wholesalePrice? }`.
+      A size with no price falls back to the base price (opt-in per product; `normalizeSizes()` in utils maps
+      legacy `string[]` at read time, no migration). `sizePrice()`/`priceRange()` drive a live price on the
+      product page (recomputes on size select), the cart line snapshot, POS, and the "From GH₵ X" card label.
+      Colours stay price-neutral. `getDisplayPrice()` now coerces a missing price to 0 — **5 legacy products
+      have no `price` field at all** (Firestore auto-id test products) and show GH₵ 0 until one is set.
+    - **Order delete**: `deleteOrder`/`deleteWholesaleOrder` in the store + a trash button per row on the
+      admin Orders page (products already deleted).
+    - **Product form**: dropped the Rating and Review-Count inputs (a shop owner shouldn't set those — they
+      default to 5/0, preserved on edit); only Name/Category/Price/Stock are required; the rest is behind two
+      collapsible sections. Sizes are now repeatable name + price rows.
+    - **Staff-console redesign** (the big one): access moved from fixed role→pages to **granular per-page
+      permissions** — `staff.permissions[]` + `src/lib/permissions.ts` (`hasPermission`, `staffHome`,
+      `GRANTABLE_PERMISSIONS`, role-default fallback for legacy staff). Admins always have everything;
+      Dashboard is always allowed; **Staff/Settings/Activity stay admin-only and aren't grantable**. The
+      Create/Edit-Staff form got a page-access checklist; the sidebar AND a per-page guard in the dashboard
+      layout both read `hasPermission`. Staff land on **/admin/pos** after login (`staffHome`). New app shell:
+      a **mobile bottom dock** (`components/admin/AdminBottomDock`, first 3 permitted sections + a "More"
+      sheet), a slim mobile app header, and a **web manifest** (`app/manifest.ts`, standalone/installable,
+      `start_url:/admin/login`) + iOS `appleWebApp` meta + `themeColor` viewport — so it installs to the home
+      screen and feels native. The **POS** was rebuilt mobile-first (big tappable grid, full-screen cart
+      sheet on mobile, side panel on desktop). **Inventory** got a mobile card view; **Orders** and every
+      other admin table (Sales, Business Customers, Staff, Products, Categories, Reconciliation, Activity,
+      Blog) were made horizontally scrollable with a readable min-width (Sales/Customers were `overflow-hidden`
+      and clipped on mobile).
+    - **Deploy is now GitHub-connected with auto-rollouts** (a push to `main` builds+deploys on its own).
+      All the above was verified by clean builds; admin screens can't be click-tested without a staff login,
+      which isn't available in-session. Two data tasks are outstanding for the owner: reset
+      `settings.theme.primaryColor` from `#1a1a1a` back to `#dd8f2e` (see Session #15; blocked from a direct
+      Firestore write, so must be done in Settings → Colors & Branding), and set a real price on the 5
+      price-less products.
