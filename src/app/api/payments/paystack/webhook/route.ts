@@ -102,6 +102,8 @@ export async function POST(request: Request) {
         emailFromAddress: settings.emailFromAddress,
         storeEmail: settings.storeEmail,
         storeName: settings.storeName,
+        storePhone: settings.storePhone,
+        storeAddress: settings.storeAddress,
         theme: settings.theme,
       }).catch((err) => console.error("[paystack webhook] confirmation send failed", err));
     }

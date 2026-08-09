@@ -5,7 +5,27 @@ import { AlertTriangle, ChevronDown, ChevronUp, ShoppingBag, Trash2 } from "luci
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PageLoading } from "@/components/PageLoading";
 import { useAdminData, type Order, type OrderStatus, type WholesaleOrder } from "@/lib/store";
+import { auth } from "@/lib/firebase";
 import { formatPrice, cn } from "@/lib/utils";
+
+// Statuses that email the customer. The endpoint itself re-checks and de-dupes; this just
+// avoids a pointless round-trip for the transitions we never notify on.
+const NOTIFIED_STATUSES: OrderStatus[] = ["Processing", "Delivered"];
+
+async function notifyStatusChange(orderId: string, channel: "retail" | "wholesale", status: OrderStatus) {
+  if (!NOTIFIED_STATUSES.includes(status)) return;
+  try {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) return;
+    await fetch("/api/notifications/order-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ orderId, channel, status }),
+    });
+  } catch {
+    // Best-effort — the status change already saved regardless of the email.
+  }
+}
 
 const STATUSES: OrderStatus[] = ["Pending", "Processing", "Delivered", "Cancelled"];
 
@@ -109,10 +129,12 @@ export default function AdminOrdersPage() {
     return <PageLoading />;
   }
 
-  const setStatus = (row: OrderRow, status: OrderStatus) =>
-    row.channel === "wholesale"
+  const setStatus = async (row: OrderRow, status: OrderStatus) => {
+    await (row.channel === "wholesale"
       ? updateWholesaleOrderStatus(row.id, status)
-      : updateOrderStatus(row.id, status);
+      : updateOrderStatus(row.id, status));
+    notifyStatusChange(row.id, row.channel, status);
+  };
 
   const removeRow = (row: OrderRow) => {
     if (!confirm(`Delete order ${row.id}? This permanently removes it and can't be undone.`)) return;

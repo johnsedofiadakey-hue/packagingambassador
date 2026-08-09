@@ -126,6 +126,8 @@ function CartDrawerView({
             emailFromAddress: settings.emailFromAddress,
             storeEmail: settings.storeEmail,
             storeName: settings.storeName,
+            storePhone: settings.storePhone,
+            storeAddress: settings.storeAddress,
             theme: settings.theme,
           }),
         }).catch(() => {});
@@ -156,6 +158,8 @@ function CartDrawerView({
             emailFromAddress: settings.emailFromAddress,
             storeEmail: settings.storeEmail,
             storeName: settings.storeName,
+            storePhone: settings.storePhone,
+            storeAddress: settings.storeAddress,
             theme: settings.theme,
           }),
         }).catch(() => {

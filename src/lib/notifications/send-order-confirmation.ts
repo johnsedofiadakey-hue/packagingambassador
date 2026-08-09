@@ -1,14 +1,9 @@
 import { formatPrice } from "@/lib/utils";
 import { SITE_URL } from "@/lib/site";
+import { renderBrandedEmail, DEFAULT_EMAIL_THEME, type EmailTheme } from "@/lib/notifications/email-shell";
 import type { CartLine } from "@/lib/cart-context";
 
-export type OrderTheme = {
-  primaryColor: string;
-  secondaryColor: string;
-  accentColor: string;
-  textColor: string;
-  backgroundColor: string;
-};
+export type OrderTheme = EmailTheme;
 
 export type OrderConfirmationRequest = {
   orderId: string;
@@ -21,6 +16,8 @@ export type OrderConfirmationRequest = {
   emailFromAddress?: string;
   storeEmail?: string;
   storeName?: string;
+  storePhone?: string;
+  storeAddress?: string;
   theme?: OrderTheme;
 };
 
@@ -58,14 +55,7 @@ async function sendSms(body: OrderConfirmationRequest) {
 }
 
 function buildOrderEmailHtml(body: OrderConfirmationRequest) {
-  const storeName = body.storeName || "Packaging Ambassadors";
-  const theme: OrderTheme = body.theme ?? {
-    primaryColor: "#dd8f2e",
-    secondaryColor: "#283a17",
-    accentColor: "#e2791f",
-    textColor: "#241f16",
-    backgroundColor: "#fffbf4",
-  };
+  const theme = body.theme ?? DEFAULT_EMAIL_THEME;
   const lines = body.lines ?? [];
   const track = trackingUrl(body.orderId);
 
@@ -83,84 +73,61 @@ function buildOrderEmailHtml(body: OrderConfirmationRequest) {
     )
     .join("");
 
-  return `
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-  </head>
-  <body style="margin:0;padding:0;background-color:#f3e4cc;font-family:Arial,Helvetica,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3e4cc;padding:32px 16px;">
+  const bodyHtml = `
+    <p style="margin:0 0 4px;font-size:13px;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;color:${theme.primaryColor};">
+      Order Confirmed
+    </p>
+    <h1 style="margin:0 0 16px;font-size:22px;color:${theme.textColor};">
+      Thanks, ${body.customerName}!
+    </h1>
+    <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${theme.textColor};opacity:0.85;">
+      We've received your order and our team will be in touch shortly to confirm delivery
+      and payment. You can follow its progress any time using the button below.
+    </p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+      ${itemRows}
       <tr>
-        <td align="center">
-          <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;background-color:${theme.backgroundColor};border-radius:16px;overflow:hidden;">
-            <tr>
-              <td style="background-color:${theme.primaryColor};padding:24px 28px;text-align:center;">
-                <img src="${SITE_URL}/logo.png" alt="${storeName}" width="40" height="60" style="display:inline-block;vertical-align:middle;border:0;" />
-                <span style="display:inline-block;vertical-align:middle;margin-left:10px;font-size:18px;font-weight:bold;color:#ffffff;">
-                  ${storeName}
-                </span>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:28px;">
-                <p style="margin:0 0 4px;font-size:13px;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;color:${theme.primaryColor};">
-                  Order Confirmed
-                </p>
-                <h1 style="margin:0 0 16px;font-size:22px;color:${theme.textColor};">
-                  Thanks, ${body.customerName}!
-                </h1>
-                <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${theme.textColor};opacity:0.85;">
-                  We've received your order and our team will be in touch shortly to confirm delivery
-                  and payment.
-                </p>
+        <td style="padding:14px 0 0;font-size:15px;font-weight:bold;color:${theme.textColor};">Total</td>
+        <td style="padding:14px 0 0;font-size:15px;font-weight:bold;color:${theme.textColor};text-align:right;">${formatPrice(body.subtotal)}</td>
+      </tr>
+    </table>
 
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
-                  ${itemRows}
-                  <tr>
-                    <td style="padding:14px 0 0;font-size:15px;font-weight:bold;color:${theme.textColor};">Total</td>
-                    <td style="padding:14px 0 0;font-size:15px;font-weight:bold;color:${theme.textColor};text-align:right;">${formatPrice(body.subtotal)}</td>
-                  </tr>
-                </table>
-
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fbf3e6;border-radius:12px;">
-                  <tr>
-                    <td style="padding:16px 20px;">
-                      <p style="margin:0 0 2px;font-size:11px;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;color:${theme.textColor};opacity:0.6;">
-                        Your tracking number
-                      </p>
-                      <p style="margin:0;font-size:17px;font-weight:bold;letter-spacing:0.03em;color:${theme.textColor};">
-                        ${body.orderId}
-                      </p>
-                    </td>
-                  </tr>
-                </table>
-
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px;">
-                  <tr>
-                    <td align="center">
-                      <a href="${track}" style="display:inline-block;background-color:${theme.primaryColor};color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;padding:13px 32px;border-radius:999px;">
-                        Track My Order
-                      </a>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-            <tr>
-              <td style="background-color:${theme.secondaryColor};padding:18px 28px;text-align:center;">
-                <p style="margin:0;font-size:12px;color:#ffffff;opacity:0.85;">
-                  ${storeName} — Ghana's Packaging Partner
-                </p>
-              </td>
-            </tr>
-          </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fbf3e6;border-radius:12px;">
+      <tr>
+        <td style="padding:16px 20px;">
+          <p style="margin:0 0 2px;font-size:11px;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;color:${theme.textColor};opacity:0.6;">
+            Your tracking number
+          </p>
+          <p style="margin:0;font-size:17px;font-weight:bold;letter-spacing:0.03em;color:${theme.textColor};">
+            ${body.orderId}
+          </p>
         </td>
       </tr>
     </table>
-  </body>
-</html>`;
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px;">
+      <tr>
+        <td align="center">
+          <a href="${track}" style="display:inline-block;background-color:${theme.primaryColor};color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;padding:13px 32px;border-radius:999px;">
+            Track My Order
+          </a>
+        </td>
+      </tr>
+    </table>`;
+
+  return renderBrandedEmail({
+    theme,
+    contact: {
+      storeName: body.storeName || "Packaging Ambassadors",
+      storePhone: body.storePhone,
+      storeEmail: body.storeEmail,
+      storeAddress: body.storeAddress,
+    },
+    footer: "customer",
+    preheader: `Order ${body.orderId} confirmed — total ${formatPrice(body.subtotal)}. Track it any time.`,
+    bodyHtml,
+  });
 }
 
 async function sendEmail(body: OrderConfirmationRequest) {

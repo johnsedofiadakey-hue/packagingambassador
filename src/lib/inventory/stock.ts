@@ -90,11 +90,15 @@ export async function reconcileLowStockFlags(
 export async function getInventorySettings(db: Firestore) {
   const snap = await db.collection("settings").doc("store").get().catch(() => null);
   const data = snap?.data() ?? {};
+  const str = (v: unknown) => (typeof v === "string" ? v : undefined);
   return {
     threshold: typeof data.lowStockThreshold === "number" ? data.lowStockThreshold : 20,
-    storeEmail: typeof data.storeEmail === "string" ? data.storeEmail : undefined,
-    storeName: typeof data.storeName === "string" ? data.storeName : undefined,
-    fromAddress: typeof data.emailFromAddress === "string" ? data.emailFromAddress : undefined,
+    storeEmail: str(data.storeEmail),
+    storeName: str(data.storeName),
+    fromAddress: str(data.emailFromAddress),
+    storePhone: str(data.storePhone),
+    storeAddress: str(data.storeAddress),
+    theme: data.theme,
   };
 }
 
@@ -105,10 +109,10 @@ export async function getInventorySettings(db: Firestore) {
  */
 export async function settleInventoryForOrder(db: Firestore, lines: CartLine[]): Promise<StockShortfall[]> {
   const shortfalls = await applyStockDeduction(db, lines);
-  const { threshold, storeEmail, storeName, fromAddress } = await getInventorySettings(db);
+  const { threshold, storeEmail, storeName, fromAddress, theme } = await getInventorySettings(db);
   const newlyLow = await reconcileLowStockFlags(db, lines.map((l) => l.slug), threshold);
   if (newlyLow.length > 0) {
-    await sendLowStockAlert({ items: newlyLow, threshold, storeEmail, storeName, fromAddress }).catch((err) =>
+    await sendLowStockAlert({ items: newlyLow, threshold, storeEmail, storeName, fromAddress, theme }).catch((err) =>
       console.error("[low-stock] alert failed", err)
     );
   }
