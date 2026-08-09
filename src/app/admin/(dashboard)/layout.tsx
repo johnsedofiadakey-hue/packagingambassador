@@ -25,35 +25,32 @@ import {
 import { Logo } from "@/components/Logo";
 import { auth } from "@/lib/firebase";
 import { useCurrentStaff } from "@/lib/useCurrentStaff";
-import type { StaffRole } from "@/lib/store";
+import { hasPermission, staffHome, type PermissionKey } from "@/lib/permissions";
+import { AdminBottomDock, type DockItem } from "@/components/admin/AdminBottomDock";
 
-const ALL_ROLES: StaffRole[] = ["Admin", "Sales Staff", "Inventory Staff"];
+type Perm = PermissionKey | "dashboard" | "staff" | "settings" | "activity";
+type NavItem = DockItem & { perm: Perm };
 
-// `roles` is the source of truth for BOTH the sidebar (hide links) and the per-page
-// guard below (redirect on direct-URL access). Admin sees everything; the two staff
-// roles get real, distinct scopes — Sales handles selling, Inventory handles stock.
-const NAV = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ALL_ROLES },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3, roles: ["Admin"] as StaffRole[] },
-  { href: "/admin/pos", label: "Point of Sale", icon: Monitor, roles: ["Admin", "Sales Staff"] as StaffRole[] },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingBag, roles: ALL_ROLES },
-  { href: "/admin/sales", label: "Sales Records", icon: Receipt, roles: ["Admin", "Sales Staff"] as StaffRole[] },
-  { href: "/admin/reconciliation", label: "Reconciliation", icon: ShieldCheck, roles: ["Admin"] as StaffRole[] },
-  { href: "/admin/products", label: "Products", icon: Package, roles: ALL_ROLES },
-  { href: "/admin/inventory", label: "Inventory", icon: Boxes, roles: ["Admin", "Inventory Staff"] as StaffRole[] },
-  { href: "/admin/categories", label: "Categories", icon: FolderTree, roles: ["Admin", "Inventory Staff"] as StaffRole[] },
-  { href: "/admin/business-customers", label: "Business Customers", icon: Building2, roles: ["Admin", "Sales Staff"] as StaffRole[] },
-  { href: "/admin/blog", label: "Blog", icon: Newspaper, roles: ["Admin"] as StaffRole[] },
-  { href: "/admin/staff", label: "Staff", icon: Users, roles: ["Admin"] as StaffRole[] },
-  { href: "/admin/activity", label: "Activity Log", icon: History, roles: ["Admin"] as StaffRole[] },
-  { href: "/admin/settings", label: "Settings", icon: Settings, roles: ["Admin"] as StaffRole[] },
+// Order matters: the first permitted three become the mobile dock tabs, so keep the most-used
+// (Home, Sell, Orders) at the top. `perm` drives both what's shown and the per-page guard.
+const NAV: NavItem[] = [
+  { href: "/admin/dashboard", label: "Dashboard", short: "Home", icon: LayoutDashboard, perm: "dashboard" },
+  { href: "/admin/pos", label: "Point of Sale", short: "Sell", icon: Monitor, perm: "pos" },
+  { href: "/admin/orders", label: "Orders", short: "Orders", icon: ShoppingBag, perm: "orders" },
+  { href: "/admin/products", label: "Products", short: "Products", icon: Package, perm: "products" },
+  { href: "/admin/inventory", label: "Inventory", short: "Stock", icon: Boxes, perm: "inventory" },
+  { href: "/admin/sales", label: "Sales Records", short: "Sales", icon: Receipt, perm: "sales" },
+  { href: "/admin/business-customers", label: "Business Customers", short: "Clients", icon: Building2, perm: "customers" },
+  { href: "/admin/categories", label: "Categories", short: "Categories", icon: FolderTree, perm: "categories" },
+  { href: "/admin/analytics", label: "Analytics", short: "Analytics", icon: BarChart3, perm: "analytics" },
+  { href: "/admin/reconciliation", label: "Reconciliation", short: "Reconcile", icon: ShieldCheck, perm: "reconciliation" },
+  { href: "/admin/blog", label: "Blog", short: "Blog", icon: Newspaper, perm: "blog" },
+  { href: "/admin/staff", label: "Staff", short: "Staff", icon: Users, perm: "staff" },
+  { href: "/admin/activity", label: "Activity Log", short: "Activity", icon: History, perm: "activity" },
+  { href: "/admin/settings", label: "Settings", short: "Settings", icon: Settings, perm: "settings" },
 ];
 
-export default function AdminDashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, staffDoc, loading } = useCurrentStaff();
@@ -63,17 +60,15 @@ export default function AdminDashboardLayout({
     if (!loading && !authorized) router.replace("/admin/login");
   }, [loading, authorized, router]);
 
-  // Per-page role guard: hiding a nav link isn't access control — a staff member could
-  // type an admin-only URL directly. Match the current path to its nav item (longest
-  // href prefix, so sub-routes like /admin/pos/receipt/x resolve to /admin/pos) and
-  // bounce to the dashboard (which every role can see) if the role isn't permitted.
+  // Per-page guard: match the path to its nav item (longest href prefix so sub-routes resolve)
+  // and bounce to the staff's home if they lack that page's permission.
   useEffect(() => {
     if (loading || !staffDoc) return;
     const match = NAV.filter(
       (item) => pathname === item.href || pathname.startsWith(item.href + "/")
     ).sort((a, b) => b.href.length - a.href.length)[0];
-    if (match && !match.roles.includes(staffDoc.role)) {
-      router.replace("/admin/dashboard");
+    if (match && !hasPermission(staffDoc, match.perm)) {
+      router.replace(staffHome(staffDoc));
     }
   }, [pathname, loading, staffDoc, router]);
 
@@ -89,18 +84,17 @@ export default function AdminDashboardLayout({
     );
   }
 
-  const visibleNav = NAV.filter((item) => item.roles.includes(staffDoc.role));
+  const visibleNav = NAV.filter((item) => hasPermission(staffDoc, item.perm));
 
   return (
     <div className="flex min-h-screen bg-sand-100">
+      {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-white/40 bg-white/60 shadow-sm shadow-ink-900/5 backdrop-blur-xl md:flex">
         <div className="flex items-center gap-2 px-6 py-5">
           <Logo className="h-9" />
           <span className="font-display leading-tight">
             <span className="block text-sm font-bold text-ink-900">Packaging</span>
-            <span className="block text-[10px] font-bold tracking-widest text-amber-600">
-              ADMIN PORTAL
-            </span>
+            <span className="block text-[10px] font-bold tracking-widest text-amber-600">STAFF CONSOLE</span>
           </span>
         </div>
 
@@ -140,21 +134,26 @@ export default function AdminDashboardLayout({
       </aside>
 
       <div className="min-w-0 flex-1">
-        <div className="flex gap-1 overflow-x-auto border-b border-white/40 bg-white/60 px-3 py-2 backdrop-blur-xl md:hidden">
-          {visibleNav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-ink-800 hover:bg-amber-500/10 hover:text-amber-700"
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          ))}
-        </div>
+        {/* Mobile app header */}
+        <header className="sticky top-0 z-40 flex items-center justify-between border-b border-white/50 bg-white/80 px-4 py-3 backdrop-blur-xl md:hidden">
+          <div className="flex items-center gap-2">
+            <Logo className="h-7" />
+            <span className="font-display text-sm font-bold text-ink-900">Staff Console</span>
+          </div>
+          <span className="rounded-full bg-ink-900/5 px-2.5 py-1 text-xs font-medium text-ink-700/70">
+            {staffDoc.name}
+          </span>
+        </header>
 
-        <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-6 pb-28 md:px-6 md:py-8 md:pb-8">{children}</main>
       </div>
+
+      <AdminBottomDock
+        nav={visibleNav}
+        onSignOut={() => signOut(auth)}
+        staffName={staffDoc.name}
+        staffRole={staffDoc.role}
+      />
     </div>
   );
 }

@@ -143,11 +143,11 @@ export function ProductDetail({
           <div className="mt-6">
             <p className="text-sm font-semibold text-ink-900">Size</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {sizes.map((s) => {
+              {sizes.map((s, i) => {
                 const active = size === s.name;
                 return (
                   <button
-                    key={s.name}
+                    key={`${s.name}-${i}`}
                     onClick={() => setSize(s.name)}
                     className={`flex flex-col items-center rounded-2xl px-4 py-2 text-sm font-medium transition-colors ${
                       active ? "bg-amber-500 text-white" : "bg-cream-100 text-ink-800 hover:bg-cream-200"

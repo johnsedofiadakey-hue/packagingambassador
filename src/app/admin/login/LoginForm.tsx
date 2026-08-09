@@ -8,6 +8,7 @@ import { ArrowLeft, LogIn } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { auth } from "@/lib/firebase";
 import { useCurrentStaff } from "@/lib/useCurrentStaff";
+import { staffHome } from "@/lib/permissions";
 
 export function LoginForm() {
   const router = useRouter();
@@ -24,7 +25,8 @@ export function LoginForm() {
   // would immediately redirect back here and this effect would fire again.
   useEffect(() => {
     if (!loading && user && staffDoc?.active) {
-      router.replace("/admin/dashboard");
+      // Staff land on their sell (POS) screen when they have it — the app's home base.
+      router.replace(staffHome(staffDoc));
     }
   }, [loading, user, staffDoc, router]);
 

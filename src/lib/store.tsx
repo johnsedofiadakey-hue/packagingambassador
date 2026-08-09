@@ -100,6 +100,9 @@ export type StaffMember = {
   role: StaffRole;
   active: boolean;
   createdAt: string;
+  /** Granted page keys (see lib/permissions). Undefined on legacy staff → role defaults apply.
+   *  Ignored for Admins, who always have full access. */
+  permissions?: string[];
 };
 
 export type HeroSettings = {
@@ -336,6 +339,7 @@ type AdminDataContextValue = {
     password: string;
     role: StaffRole;
     active: boolean;
+    permissions?: string[];
   }) => Promise<StaffMember>;
   updateStaff: (id: string, patch: Partial<Omit<StaffMember, "id">>) => Promise<void>;
   removeStaff: (id: string) => Promise<void>;
@@ -567,6 +571,7 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
     password: string;
     role: StaffRole;
     active: boolean;
+    permissions?: string[];
   }) => {
     const secondaryAuth = getSecondaryAuth();
     const credential = await createUserWithEmailAndPassword(
@@ -584,6 +589,7 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       role: input.role,
       active: input.active,
       createdAt: new Date().toISOString(),
+      ...(input.role !== "Admin" ? { permissions: input.permissions ?? [] } : {}),
     };
     await setDoc(doc(db, "staff", newUid), staffMember);
     logActivity("staff_added", { staffId: newUid, name: input.name, role: input.role });

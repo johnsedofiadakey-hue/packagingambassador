@@ -5,13 +5,14 @@ import { Info, Pencil, Plus, Trash2, X } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { useAdminData, type StaffMember, type StaffRole } from "@/lib/store";
 import { useCurrentStaff } from "@/lib/useCurrentStaff";
+import { GRANTABLE_PERMISSIONS, permissionsFor, ROLE_DEFAULT_PERMISSIONS } from "@/lib/permissions";
 
 const ROLES: StaffRole[] = ["Admin", "Sales Staff", "Inventory Staff"];
 
 const ROLE_NOTE: Record<StaffRole, string> = {
-  Admin: "Full access — products, categories, orders, staff, and settings.",
-  "Sales Staff": "Orders and products (view only pricing) — no access to settings or staff.",
-  "Inventory Staff": "Products and stock counts only — no pricing, orders, or settings access.",
+  Admin: "Full access to every section, including Staff and Settings.",
+  "Sales Staff": "Sets a starting page list — fine-tune exactly what they can open below.",
+  "Inventory Staff": "Sets a starting page list — fine-tune exactly what they can open below.",
 };
 
 function StaffForm({
@@ -27,6 +28,7 @@ function StaffForm({
     password: string;
     role: StaffRole;
     active: boolean;
+    permissions: string[];
   }) => Promise<void>;
 }) {
   const [name, setName] = useState(staff?.name ?? "");
@@ -34,15 +36,21 @@ function StaffForm({
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<StaffRole>(staff?.role ?? "Sales Staff");
   const [active, setActive] = useState(staff?.active ?? true);
+  const [permissions, setPermissions] = useState<string[]>(() =>
+    staff ? permissionsFor(staff) : ROLE_DEFAULT_PERMISSIONS["Sales Staff"]
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const togglePerm = (key: string) =>
+    setPermissions((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSaving(true);
     try {
-      await onSubmit({ name: name.trim(), email: email.trim(), password, role, active });
+      await onSubmit({ name: name.trim(), email: email.trim(), password, role, active, permissions });
     } catch (err) {
       const message =
         err instanceof Error && err.message.includes("auth/email-already-in-use")
@@ -127,6 +135,48 @@ function StaffForm({
             </select>
             <p className="mt-1.5 text-xs text-ink-700/60">{ROLE_NOTE[role]}</p>
           </div>
+
+          {role === "Admin" ? (
+            <p className="rounded-xl bg-amber-500/10 px-3 py-2.5 text-xs font-medium text-amber-800">
+              Admins can open every section. Page access below only applies to non-admin roles.
+            </p>
+          ) : (
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-ink-700/70">
+                Page Access — tick what this person can open
+              </label>
+              <div className="mt-2 grid grid-cols-2 gap-1.5">
+                {GRANTABLE_PERMISSIONS.map((p) => {
+                  const on = permissions.includes(p.key);
+                  return (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => togglePerm(p.key)}
+                      className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                        on
+                          ? "border-amber-500/40 bg-amber-500/10 text-amber-800"
+                          : "border-cream-200 bg-white text-ink-700 hover:bg-ink-900/5"
+                      }`}
+                    >
+                      {p.label}
+                      <span
+                        className={`ml-2 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] ${
+                          on ? "bg-amber-500 text-white" : "border border-ink-900/20"
+                        }`}
+                      >
+                        {on ? "✓" : ""}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-xs text-ink-700/50">
+                Dashboard is always available. Staff &amp; Settings stay admin-only.
+              </p>
+            </div>
+          )}
+
           <label className="flex items-center gap-2 text-sm text-ink-800">
             <input
               type="checkbox"
@@ -264,6 +314,8 @@ export default function AdminStaffPage() {
                 name: values.name,
                 role: values.role,
                 active: values.active,
+                // Admins ignore permissions (full access); store the tick list for other roles.
+                ...(values.role === "Admin" ? {} : { permissions: values.permissions }),
               });
             }
             setEditing(null);
