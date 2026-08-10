@@ -5,15 +5,16 @@ import Script from "next/script";
 
 export const dynamic = 'force-dynamic';
 
-export default async function POSReceiptPage({ params }: { params: { id: string } }) {
+export default async function POSReceiptPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const db = getAdminDb();
-  
+
   let orderData = null;
-  const orderRef = await db.collection("orders").doc(params.id).get();
+  const orderRef = await db.collection("orders").doc(id).get();
   if (orderRef.exists) {
     orderData = orderRef.data();
   } else {
-    const wholesaleRef = await db.collection("wholesaleOrders").doc(params.id).get();
+    const wholesaleRef = await db.collection("wholesaleOrders").doc(id).get();
     if (wholesaleRef.exists) {
       orderData = wholesaleRef.data();
     }

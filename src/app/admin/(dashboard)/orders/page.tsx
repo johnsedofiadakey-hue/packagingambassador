@@ -29,6 +29,10 @@ async function notifyStatusChange(orderId: string, channel: "retail" | "wholesal
 
 const STATUSES: OrderStatus[] = ["Pending", "Processing", "Delivered", "Cancelled"];
 
+// "Active" = still needs work (in the fulfilment queue); everything else is finished history.
+const ACTIVE_STATUSES: OrderStatus[] = ["Pending", "Processing"];
+type StatusView = "active" | "completed" | "all";
+
 const STATUS_STYLES: Record<OrderStatus, string> = {
   Pending: "bg-amber-500/15 text-amber-700",
   Processing: "bg-blue-500/10 text-blue-700",
@@ -108,12 +112,35 @@ export default function AdminOrdersPage() {
   } = useAdminData();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [filter, setFilter] = useState<ChannelFilter>("all");
+  // Default to the work-list: staff open Orders to fulfil, not to browse history.
+  const [view, setView] = useState<StatusView>("active");
+
+  // Counts per view (respecting the channel filter) so the tabs can show a live backlog badge.
+  const counts = useMemo(() => {
+    const all = [...orders.map(toRow), ...wholesaleOrders.map(toWholesaleRow)].filter(
+      (r) => filter === "all" || r.channel === filter
+    );
+    return {
+      active: all.filter((r) => ACTIVE_STATUSES.includes(r.status)).length,
+      completed: all.filter((r) => !ACTIVE_STATUSES.includes(r.status)).length,
+      all: all.length,
+    };
+  }, [orders, wholesaleOrders, filter]);
 
   const rows = useMemo(() => {
-    const combined = [...orders.map(toRow), ...wholesaleOrders.map(toWholesaleRow)];
-    combined.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-    return filter === "all" ? combined : combined.filter((r) => r.channel === filter);
-  }, [orders, wholesaleOrders, filter]);
+    let combined = [...orders.map(toRow), ...wholesaleOrders.map(toWholesaleRow)];
+    if (filter !== "all") combined = combined.filter((r) => r.channel === filter);
+    if (view === "active") combined = combined.filter((r) => ACTIVE_STATUSES.includes(r.status));
+    else if (view === "completed") combined = combined.filter((r) => !ACTIVE_STATUSES.includes(r.status));
+    // Active = FIFO (oldest first, so the next order to fulfil sits at the top, matching the #N
+    // queue badge). Completed/All = newest first, since those are browsed as history.
+    combined.sort((a, b) => {
+      if (a.createdAt === b.createdAt) return 0;
+      const oldestFirst = a.createdAt < b.createdAt ? -1 : 1;
+      return view === "active" ? oldestFirst : -oldestFirst;
+    });
+    return combined;
+  }, [orders, wholesaleOrders, filter, view]);
 
   // FIFO fulfilment queue: one combined retail+wholesale backlog of un-fulfilled orders,
   // numbered oldest-first (#1 = work next). Filter-independent — the position is a global rank,
@@ -146,7 +173,13 @@ export default function AdminOrdersPage() {
     <div>
       <AdminPageHeader
         title="Orders"
-        description={`${rows.length} order${rows.length === 1 ? "" : "s"}`}
+        description={
+          view === "active"
+            ? `${counts.active} to fulfil — oldest first`
+            : view === "completed"
+              ? `${counts.completed} completed`
+              : `${counts.all} order${counts.all === 1 ? "" : "s"} total`
+        }
         action={
           <div className="flex gap-1 rounded-full border border-ink-900/8 bg-cream-50 p-1">
             {(["all", "retail", "wholesale"] as const).map((f) => (
@@ -165,12 +198,45 @@ export default function AdminOrdersPage() {
         }
       />
 
+      <div className="mb-5 flex w-full gap-1 rounded-2xl border border-ink-900/8 bg-cream-50 p-1 sm:w-auto sm:inline-flex">
+        {([
+          { key: "active", label: "Active", count: counts.active },
+          { key: "completed", label: "Completed", count: counts.completed },
+          { key: "all", label: "All", count: counts.all },
+        ] as const).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setView(t.key)}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors sm:flex-none",
+              view === t.key ? "bg-amber-500 text-white" : "text-ink-700 hover:bg-ink-900/5"
+            )}
+          >
+            {t.label}
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums",
+                view === t.key ? "bg-white/25 text-white" : "bg-ink-900/8 text-ink-700"
+              )}
+            >
+              {t.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {rows.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-ink-900/15 bg-cream-50 p-10 text-center text-sm text-ink-700/60">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-ink-900/5 text-ink-700/40">
             <ShoppingBag className="h-6 w-6" strokeWidth={1.5} />
           </span>
-          <p>No orders yet. Orders placed at checkout on the storefront will show up here.</p>
+          <p>
+            {view === "active"
+              ? "You're all caught up — no orders waiting to be fulfilled. 🎉"
+              : view === "completed"
+                ? "No completed orders yet. Delivered and cancelled orders land here."
+                : "No orders yet. Orders placed at checkout on the storefront will show up here."}
+          </p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-ink-900/8 bg-cream-50">

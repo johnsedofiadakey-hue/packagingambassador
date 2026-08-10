@@ -4,9 +4,9 @@ import { formatPrice } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function UniversalInvoicePage({ params }: { params: { id: string } }) {
+export default async function UniversalInvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const db = getAdminDb();
-  const orderId = params.id;
+  const { id: orderId } = await params;
 
   // Try retail first, then wholesale
   let doc = await db.collection("orders").doc(orderId).get();

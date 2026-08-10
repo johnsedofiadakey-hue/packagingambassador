@@ -4,9 +4,10 @@ import type { WholesaleOrder } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default async function WaybillPage({ params }: { params: { id: string } }) {
+export default async function WaybillPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const db = getAdminDb();
-  const doc = await db.collection("wholesaleOrders").doc(params.id).get();
+  const doc = await db.collection("wholesaleOrders").doc(id).get();
 
   if (!doc.exists) {
     notFound();
@@ -32,7 +33,7 @@ export default async function WaybillPage({ params }: { params: { id: string } }
         <div className="flex items-start justify-between border-b-2 border-forest-800 pb-6">
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-forest-900">WAYBILL</h1>
-            <p className="mt-1 text-sm font-medium text-gray-500">Order #{params.id.slice(0, 8).toUpperCase()}</p>
+            <p className="mt-1 text-sm font-medium text-gray-500">Order #{id.slice(0, 8).toUpperCase()}</p>
           </div>
           <div className="text-right">
             <h2 className="text-xl font-bold text-forest-800">Packaging Ambassadors</h2>
