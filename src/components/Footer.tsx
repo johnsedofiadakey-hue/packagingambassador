@@ -18,6 +18,8 @@ const COMPANY_LINKS = [
   { href: "/contact", label: "Contact" },
   { href: "/blog", label: "Blog" },
   { href: "/track", label: "Track Order" },
+  { href: "/terms", label: "Terms of Service" },
+  { href: "/privacy", label: "Privacy Policy" },
 ];
 
 function FooterLink({ href, label }: { href: string; label: string }) {
